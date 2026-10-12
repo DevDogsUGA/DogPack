@@ -9,6 +9,6 @@
   "generatedTypes": { "repo": "DevDogsUGA/DogPack" },
   "oauth": { "redirectUris": ["dev.dogpack://login-callback"] },
   "devData": { "file": "supabase/dev-data.sql" },
-  "production": { "projects": ["dogpack"] },
+  "production": { "projects": ["dogpack", "xeuurnhetdvfasrqiqab"] },
   "runHint": "flutter run --dart-define-from-file=.env"
 }
