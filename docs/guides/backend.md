@@ -74,4 +74,4 @@ holds:
 | secret | `PLATFORM_MODERATION_SECRET` | The `whsec_` secret the platform shows once when the app is registered in the console under Apps Outside the Platform (or rotated in `/tools/oauth`). |
 
 The `preflight` environment holds `DB_URL` for the read-only `migration_planner`
-role (`.github/scripts/planner-role.sql`).
+role (`.github/scripts/planner-role.sql`, already run once on the production project).

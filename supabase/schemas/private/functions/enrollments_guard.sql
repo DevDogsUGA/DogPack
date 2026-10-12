@@ -3,7 +3,8 @@
 --   * no adding for a term that is over;
 --   * no adding after the term's full-term drop/add end (dogpack.terms
 --     "dropAddEnds", Athens time), EXCEPT the one-time initial enrollment: a
---     member who has not finished onboarding may enter their courses whenever
+--     member who has never finished onboarding (private.onboarded_users, which
+--     delete_my_data does not clear, so the exception is used once) may enter their courses whenever
 --     they join, because someone who finds DogPack in November still has to
 --     say what they are taking;
 --   * a term the cache has never heard of is refused, unless the member is
@@ -28,8 +29,7 @@ begin
   end if;
 
   select exists (
-    select 1 from dogpack.profiles p
-    where p."userId" = new."userId" and p."onboardedAt" is not null
+    select 1 from private.onboarded_users o where o."userId" = new."userId"
   ) into v_onboarded;
 
   select * into v_term from dogpack.terms t where t."term" = new."term";

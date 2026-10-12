@@ -48,6 +48,11 @@ export async function platformUserId(
   if (error || !data.user) return null;
   const identity = data.user.identities?.find((i) => i.provider === "custom:devdogsuga");
   if (!identity) return null;
-  const sub = (identity.identity_data as { sub?: unknown } | undefined)?.sub;
-  return typeof sub === "string" && sub !== "" ? sub : identity.id;
+  // The same value the database joins on (auth.identities.provider_id, which
+  // GoTrue sets to the provider's subject). Never identity.id: that is the
+  // identity row's own uuid and would match no suspension.
+  const claims = identity.identity_data as { sub?: unknown } | undefined;
+  const providerId = (identity as { provider_id?: unknown }).provider_id;
+  const sub = typeof claims?.sub === "string" && claims.sub !== "" ? claims.sub : providerId;
+  return typeof sub === "string" && sub !== "" ? sub : null;
 }

@@ -5,8 +5,11 @@
 -- ban. Signing in again starts from an empty profile.
 --
 -- Sessions the caller hosts are deleted with their rosters; memberships in
--- other people's sessions, blocks in either direction, enrollments and the
--- profile go too. Account deletion proper (the Store Release milestone)
+-- other people's sessions, the blocks the caller placed, enrollments and the
+-- profile go too. Blocks OTHER members placed against the caller stay: they
+-- are those members' data and their protection, and the sign-in (so the uuid)
+-- is kept, so deleting your data must not lift a block. The one-time
+-- initial-enrollment exception is not reset either (private.onboarded_users). Account deletion proper (the Store Release milestone)
 -- builds on this.
 create function dogpack.delete_my_data()
 returns jsonb
@@ -34,7 +37,7 @@ begin
   delete from dogpack.sessions s where s."hostId" = v_user;
   get diagnostics v_sessions = row_count;
 
-  delete from dogpack.blocks b where b."blockerId" = v_user or b."blockedId" = v_user;
+  delete from dogpack.blocks b where b."blockerId" = v_user;
   get diagnostics v_blocks = row_count;
 
   delete from dogpack.enrollments e where e."userId" = v_user;

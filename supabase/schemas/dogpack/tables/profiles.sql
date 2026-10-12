@@ -60,3 +60,6 @@ create trigger "profiles_touch" before update on dogpack.profiles
   for each row execute function private.touch_updated_at();
 
 comment on table dogpack.profiles is 'A member''s profile. onboardedAt is set only by dogpack.complete_onboarding().';
+
+create trigger "profiles_mark_onboarded" after insert or update of "onboardedAt" on dogpack.profiles
+  for each row execute function private.profiles_mark_onboarded();

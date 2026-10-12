@@ -50,7 +50,11 @@ export async function handle(request: Request): Promise<Response> {
   if (!verified.ok) return json(401, { status: 401, error: verified.reason });
 
   const message = parseMessage(body);
-  if (!message) return json(400, { status: 400, error: "invalid_body" });
+  if (!message) {
+    // Signed but not a message this version understands (a newer schema, say).
+    // Answer 2xx like every other non-application: a retry cannot fix it.
+    return json(200, { status: "ignored", reason: "unsupported_message" });
+  }
 
   try {
     const [row] = await database()`

@@ -197,7 +197,10 @@ Deno.test({ name: "platform-moderation: signed, idempotent, order-safe, and a hi
   assertEquals((await deliver(hide, { secret: "whsec_d3Jvbmctc2VjcmV0LXdyb25nLXNlY3JldC0wMDAwMDA=" })).status, 401);
   assertEquals(await statusOf(fetch(`${FN}/platform-moderation`, { method: "GET", headers: { apikey: PUBLISHABLE_KEY } })), 405);
   // Signed but not a moderation message.
-  assertEquals((await deliver({ type: "content.explode" })).status, 400);
+  // Answered 2xx so the platform does not retry what no retry can fix.
+  const unknown = await deliver({ type: "content.explode" });
+  assertEquals(unknown.status, 200);
+  assertEquals(unknown.json.status, "ignored");
 
   const first = await deliver(hide, { id: `msg_hide_${run}` });
   assertEquals(first.json.outcome, "applied");

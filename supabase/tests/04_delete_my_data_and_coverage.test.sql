@@ -40,10 +40,10 @@ insert into dogpack.blocks ("blockerId", "blockedId") values
 select moderation.apply_event('msg_ban', '{"type":"user.ban","timestamp":"2027-01-01T00:00:00Z","data":{"userId":"bbbbbbbb-0000-4000-8000-000000000001","reason":null,"reportId":null}}'::jsonb);
 update auth.users set banned_until = null where id = '00000000-0000-4000-8000-0000000000d1';
 
-select plan(12);
+select plan(15);
 
 select tests.as_user('00000000-0000-4000-8000-0000000000d1');
-select is(dogpack.delete_my_data(), '{"blocks":2,"profiles":1,"sessions":1,"enrollments":2,"memberships":1}'::jsonb, 'delete_my_data reports what it removed');
+select is(dogpack.delete_my_data(), '{"blocks":1,"profiles":1,"sessions":1,"enrollments":2,"memberships":1}'::jsonb, 'delete_my_data reports what it removed');
 reset role;
 
 select is((select count(*)::int from dogpack.profiles where "userId" = '00000000-0000-4000-8000-0000000000d1'), 0, 'the profile is gone');
@@ -51,10 +51,16 @@ select is((select count(*)::int from dogpack.enrollments where "userId" = '00000
 select is((select count(*)::int from dogpack.sessions where "hostId" = '00000000-0000-4000-8000-0000000000d1'), 0, 'the hosted session is gone');
 select is((select count(*)::int from dogpack.session_members where "userId" = '00000000-0000-4000-8000-0000000000d1'), 0, 'the membership in a friend''s session is gone');
 select is((select "memberCount" from dogpack.sessions where id = '55555555-5555-4555-8555-555555555552'), 0, 'and the friend''s seat count followed');
-select is((select count(*)::int from dogpack.blocks), 0, 'blocks in both directions are gone');
+select is((select count(*)::int from dogpack.blocks where "blockerId" = '00000000-0000-4000-8000-0000000000d1'), 0, 'the blocks the member placed are gone');
+select is((select count(*)::int from dogpack.blocks where "blockedId" = '00000000-0000-4000-8000-0000000000d1'), 1, 'a block placed against the member survives, so deleting your data does not lift it');
+select is((select count(*)::int from private.onboarded_users where "userId" = '00000000-0000-4000-8000-0000000000d1'), 1, 'the onboarded marker survives, so the initial-enrollment exception is not renewed');
 select is((select count(*)::int from dogpack.profiles where "userId" = '00000000-0000-4000-8000-0000000000d2'), 1, 'the friend''s own data is untouched');
 select is((select state from moderation.user_states where "platformUserId" = 'bbbbbbbb-0000-4000-8000-000000000001'), 'banned', 'a ban is not lifted by deleting your data');
 select is((select count(*)::int from auth.users where id = '00000000-0000-4000-8000-0000000000d1'), 1, 'the sign-in account itself is kept (account deletion is the Store Release milestone)');
+
+-- (Leaver is banned in this fixture; lift it so the guard reaches the term check.)
+delete from moderation.user_states where "platformUserId" = 'bbbbbbbb-0000-4000-8000-000000000001';
+select throws_ok($$insert into dogpack.enrollments ("userId", "term", "course") values ('00000000-0000-4000-8000-0000000000d1', 209901, 'CSCI 9999')$$, 'PT422', 'unknown_term', 'after deleting your data the initial-enrollment exception is gone: an unknown term is refused');
 
 -- Every table in the app's schemas has row level security on; a new table that
 -- forgets it fails here, before review. (Its policies still need their own tests.)
