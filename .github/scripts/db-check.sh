@@ -77,9 +77,12 @@ base_dir=$(mktemp -d)
 mkdir -p "$base_dir/lib/generated"
 # The base branch's types are the ones main's CI uploaded for its schema hash.
 # No upload (a first schema, an unpublished devtools) is said so, not guessed.
-if git cat-file -e "$base:devtools.config.json" 2>/dev/null; then
-  git archive "$base" devtools.config.json pubspec.yaml pubspec.lock supabase/schemas 2>/dev/null |
-    tar -x -C "$base_dir" || true
+paths=()
+for path in devtools.config.json pubspec.yaml pubspec.lock supabase/schemas; do
+  if [ -n "$(git ls-tree --name-only "$base" -- "$path")" ]; then paths+=("$path"); fi
+done
+if [ "${#paths[@]}" -gt 0 ]; then
+  git archive "$base" -- "${paths[@]}" | tar -x -C "$base_dir"
 fi
 base_known=false
 if [ -d "$base_dir/supabase/schemas" ]; then
@@ -93,7 +96,11 @@ else
 fi
 
 if [ "$base_known" = true ]; then
-  if diff -ru "$base_dir/lib/generated" lib/generated >"$base_dir/types.diff"; then
+  # Compared as a/ and b/ so the diff headers name the models, not a temp directory.
+  mkdir -p "$base_dir/cmp/a" "$base_dir/cmp/b"
+  cp -R "$base_dir/lib/generated/." "$base_dir/cmp/a/"
+  cp -R lib/generated/. "$base_dir/cmp/b/"
+  if (cd "$base_dir/cmp" && diff -ruN a b) >"$base_dir/types.diff"; then
     note "#### Type changes"
     note ''
     note "None: the generated models ($models file(s)) are the same as on the base branch."

@@ -15,13 +15,15 @@
 #   GITHUB_REPOSITORY  owner/name
 #   SUPABASE, DEVTOOLS  as in db-check.sh
 #   DRY_RUN         `true` builds and packs but uploads nothing
+#   GENERATED_TYPES_TAG   the release tag; default `generated-types`
+#   GENERATED_TYPES_KEEP  how many assets to keep; default 200
 set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
 devtools=${DEVTOOLS:-npx --yes @devdogsuga/devtools@next}
 repo=${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}
-tag=generated-types
-keep=200
+tag=${GENERATED_TYPES_TAG:-generated-types}
+keep=${GENERATED_TYPES_KEEP:-200}
 summary=${GITHUB_STEP_SUMMARY:-/dev/stderr}
 
 # shellcheck disable=SC2086
@@ -30,7 +32,12 @@ asset="dogpack-types-${hash}.tgz"
 
 # The assets endpoint is paginated (the release object itself is not a safe
 # place to count from once there are hundreds).
-release_id() { gh api "repos/$repo/releases/tags/$tag" --jq .id 2>/dev/null || true; }
+# A missing release makes gh print its 404 body on stdout, so only a number counts.
+release_id() {
+  local id
+  id=$(gh api "repos/$repo/releases/tags/$tag" --jq .id 2>/dev/null || true)
+  if [[ "$id" =~ ^[0-9]+$ ]]; then echo "$id"; fi
+}
 release_assets() { gh api --paginate "repos/$repo/releases/$1/assets?per_page=100" --jq "$2"; }
 
 rid=$(release_id)
