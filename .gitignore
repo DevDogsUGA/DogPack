@@ -17,3 +17,10 @@ lib/generated/
 # IDE
 *.iml
 .idea/
+
+# `devtools db sync` records what a database has had applied here. The schema
+# in supabase/schemas is the source of truth; migrations are generated and
+# never committed, so a stray `git add .` must not pick them up.
+supabase/migrations/
+supabase/.temp/
+supabase/.branches/
