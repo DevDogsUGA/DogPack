@@ -48,7 +48,7 @@ permissions:
 env:
   # One commit of DevDogsUGA for the shared block AND its scripts. Bump both
   # lines below (and database.yaml, destructive-gate.yaml) together.
-  SHARED_REF: ce8e82f68ed0199cbb5d5e34f8bda08bd3dcb322
+  SHARED_REF: 90437662e61e3f8f147e4fe69a00d33912e2e3aa
   SUPABASE_VERSION: 2.117.0
 
 jobs:
@@ -83,7 +83,7 @@ jobs:
 
   production-database:
     needs: resolve
-    uses: DevDogsUGA/DevDogsUGA/.github/workflows/deploy-database.yaml@ce8e82f68ed0199cbb5d5e34f8bda08bd3dcb322
+    uses: DevDogsUGA/DevDogsUGA/.github/workflows/deploy-database.yaml@90437662e61e3f8f147e4fe69a00d33912e2e3aa
     secrets: inherit
     permissions:
       contents: read
@@ -99,7 +99,7 @@ jobs:
       self_approval_gate: true
       require_latest: true
       supabase_version: 2.117.0
-      shared_ref: ce8e82f68ed0199cbb5d5e34f8bda08bd3dcb322
+      shared_ref: 90437662e61e3f8f147e4fe69a00d33912e2e3aa
 
   production-functions:
     needs: production-database

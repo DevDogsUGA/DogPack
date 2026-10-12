@@ -14,6 +14,6 @@ permissions:
   issues: write
 jobs:
   destructive-gate:
-    uses: DevDogsUGA/DevDogsUGA/.github/workflows/destructive-gate.yaml@b35b543970f9ed009e8a17c076e1da922421382f
+    uses: DevDogsUGA/DevDogsUGA/.github/workflows/destructive-gate.yaml@90437662e61e3f8f147e4fe69a00d33912e2e3aa
     with:
-      shared_ref: b35b543970f9ed009e8a17c076e1da922421382f
+      shared_ref: 90437662e61e3f8f147e4fe69a00d33912e2e3aa
