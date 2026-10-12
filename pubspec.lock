@@ -609,10 +609,10 @@ packages:
     dependency: "direct dev"
     description:
       name: supadart
-      sha256: "3bf58c7f5fa2305475c822e4cfcb7dda7cbb7695f16d15b34ca106fe540e9663"
+      sha256: "9d2550e94c4afd6ac9f96a8f7367f6acb07e869582259ac7675f4d4c555676ad"
       url: "https://pub.dev"
     source: hosted
-    version: "1.9.3"
+    version: "2.1.0"
   term_glyph:
     dependency: transitive
     description:

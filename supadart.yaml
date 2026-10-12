@@ -4,16 +4,20 @@
 #
 #   SUPABASE_URL=... SUPABASE_API_KEY=... dart run supadart
 #
-# supadart can only read PostgREST's *default* schema: it fetches the OpenAPI
-# spec from `<url>/rest/v1/` with no `Accept-Profile` header and exposes no
-# schema option. So `[api] schemas` in supabase/config.toml lists the app's
-# schema FIRST, which makes it the default REST profile. Do not reorder it.
+# supadart 2.x reads the schema named under `schemas:` below (an
+# `Accept-Profile` header), and reads the Postgres enums (`classYear`,
+# `sessionStatus`) from the database. 1.x could only read the default `public`
+# schema and generated `String.values.byName(...)` for enums outside it, which
+# does not compile; do not go back to 1.x. The schema must stay exposed under
+# `[api] schemas` in supabase/config.toml.
 #
 # The SECRET (service) key is required: supadart 401s on the publishable key
 # when it fetches the spec. It is a tooling credential and never a
 # `--dart-define`.
 #
 # With no tables in the schema this is a no-op.
+
+schemas: [dogpack]
 
 output: lib/generated/
 separated: true

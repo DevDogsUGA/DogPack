@@ -40,13 +40,14 @@ credential: it lives in the git-ignored `.env.tooling`, and it never becomes a
 > Every `--dart-define` value must be public. `.env.example` is checked in CI
 > (`validate`) for keys that name a secret and values that look like one.
 
-## The default-schema constraint
+## The schema and its enums
 
-supadart can only read PostgREST's **default** schema: it requests `/rest/v1/`
-with no `Accept-Profile` header and offers no way to name a schema. In
-`supabase/config.toml` the app's schema therefore goes **first** under
-`[api] schemas`, which makes it the default profile. The ordering is neither
-alphabetical nor arbitrary: do not tidy it.
+supadart reads the schema named under `schemas:` in `supadart.yaml` (`dogpack`),
+which must be exposed under `[api] schemas` in `supabase/config.toml`. It reads
+the Postgres enums (`classYear`, `sessionStatus`) from the database, so a new
+enum needs no entry in the config. Older supadart (1.x) could only read the
+`public` schema and generated code that did not compile for enums elsewhere,
+which is why `pubspec.yaml` requires 2.x.
 
 ## It is a no-op until there are tables
 
