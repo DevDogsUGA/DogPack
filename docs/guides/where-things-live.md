@@ -2,10 +2,15 @@
 
 | Path | What it is |
 | --- | --- |
-| `lib/main.dart` | The app: Supabase initialization, the `--dart-define` values it reads, and the placeholder home screen. |
+| `lib/main.dart` | Start-up: reads the `--dart-define` values (a friendly error screen when `.env` is missing), starts Sentry if a DSN is set, initializes Supabase (which restores the stored session) and runs the app. |
+| `lib/app.dart`, `lib/router.dart` | `MaterialApp.router` with the DogPack brand theme from `devdogsuga_sdk`, and the `go_router` routes. `gateRedirect` is the whole sign-in gate: a status in, a route out. |
+| `lib/auth/` | `AuthController` (a `ChangeNotifier`, provided with `provider`) holds where the member stands: loading, signed out, needs onboarding, ready, or failed. `AuthGateway` is the seam to Supabase, so tests use a fake. |
+| `lib/screens/`, `lib/widgets/` | One file per screen. New screens go under `/` in the router so they sit behind the gate. |
+| `.env.example`, `.vscode/` | The app's public configuration, and the launch configuration that refuses to start with a secret in `.env`. |
+| `supabase/dev-data.sql` | Fake classmates and sessions for your own database: `npx @devdogsuga/devtools@next dev-data`. |
 | `lib/generated/` | supadart's output, one Dart model per table. Git-ignored; never hand-edit it, regenerate. |
 | `android/`, `ios/` | The committed platform runners (`dev.dogpack`). There is no `web/`: the app does not target it. |
-| `test/` | Flutter tests. `widget_test.dart` is the smoke test. |
+| `test/` | Flutter tests: the controller, the gate and its routes, the config. |
 | `pubspec.yaml`, `pubspec.lock` | Dependencies. The lock file is committed on purpose: the generated-types hash covers the supadart version it resolves. |
 | `supadart.yaml` | Config for the Dart model generator; see [Typed models](./typed-models.md). |
 | `analysis_options.yaml` | The lint rules `flutter analyze` checks against. |

@@ -64,6 +64,26 @@ fi
 # 2. The RLS suite.
 "$supabase" test db
 
+# 2b. The dev data (`devtools dev-data`) runs against the schema, twice: a
+# rename or a new guard in the schema breaks it, and a second run must not pile
+# up rows. It runs in the transaction devtools wraps it in.
+if [ -f supabase/dev-data.sql ]; then
+  project_id=$(sed -n 's/^project_id *= *"\(.*\)"/\1/p' supabase/config.toml | head -n1)
+  db_container="supabase_db_${project_id}"
+  member=00000000-0000-4000-8000-0000000000f1
+  psql_run() { docker exec -i "$db_container" psql -U postgres -v ON_ERROR_STOP=1 -q "$@"; }
+  psql_run -c "insert into auth.users (id, email) values ('$member', 'devdata-check@dogpack.devdogsuga.test')"
+  for run in 1 2; do
+    { echo 'begin;'; echo "select set_config('devtools.member_id', '$member', true);"; cat supabase/dev-data.sql; echo 'commit;'; } | psql_run >/dev/null
+  done
+  sessions=$(psql_run -At -c 'select count(*) from dogpack.sessions')
+  if [ "$sessions" -lt 3 ]; then
+    echo "supabase/dev-data.sql ran but left $sessions sessions." >&2
+    exit 1
+  fi
+  psql_run -c "delete from auth.users where email like '%@devdata.dogpack.devdogsuga.test' or id = '$member'"
+fi
+
 # 3. The models, and what changed in them.
 "$here/db-types.sh"
 

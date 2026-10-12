@@ -1,0 +1,26 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "DogPack",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      // The app's public configuration. Run `npx @devdogsuga/devtools@next setup`
+      // first; it writes .env from .env.example.
+      "args": ["--dart-define-from-file=.env"],
+      // Refuses to start when .env holds a secret key or a database URL: they
+      // would be compiled into the app and could be read back out of it.
+      "preLaunchTask": "check .env is public-only"
+    },
+    {
+      "name": "DogPack (release)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release",
+      "program": "lib/main.dart",
+      "args": ["--dart-define-from-file=.env"],
+      "preLaunchTask": "check .env is public-only"
+    }
+  ]
+}

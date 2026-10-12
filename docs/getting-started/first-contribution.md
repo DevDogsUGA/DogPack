@@ -2,8 +2,8 @@
 
 A first change that touches nothing risky: edit some visible text or the theme
 on the home screen, see it render, and open a pull request. It exercises your
-Flutter install, your emulator and the repository's checks before you touch
-anything that talks to Supabase.
+Flutter install, your emulator and the repository's checks before you change
+anything that talks to the database.
 
 ## Prerequisites
 
@@ -12,26 +12,50 @@ anything that talks to Supabase.
   Mac to run the app from source.
 - Git, and a fork of this repository if you are not on the DevDogs team.
 
-## Make a UI-only change
+## Set up
 
-Open `lib/main.dart`. `StudyGroupFinderApp` is the whole app today: a
-`MaterialApp` with a Material 3 theme (`colorSchemeSeed: const Color(0xFFBA0C2F)`)
-and a `Scaffold` whose body is a centred `Text`. Change the label, or try a
-different `colorSchemeSeed`. Nothing here touches Supabase, so there is nothing
-to break.
+```bash
+npx @devdogsuga/devtools@next setup
+```
+
+This writes `.env` from [`.env.example`](../../.env.example) with your own
+Supabase project (a local Docker stack, or a hosted project of your own), applies
+the schema, fetches the generated models and registers "Sign in with DevDogs" on
+your project. `.env` holds public values only: it is compiled into the app.
+Secrets (the database URL, the secret key) go to `.env.tooling`, which the app
+never reads.
 
 ## Run it
 
 ```bash
 flutter pub get
-flutter run \
-  --dart-define=SUPABASE_URL=http://localhost:54321 \
-  --dart-define=SUPABASE_PUBLISHABLE_KEY=placeholder
+flutter run --dart-define-from-file=.env
 ```
 
-The app initializes the Supabase client at start-up, which needs *a* URL and key
-but makes no request, so the placeholders are enough for a UI change. Press `r`
-in the terminal for hot reload.
+In VS Code, the **DogPack** launch configuration does the same. It first runs
+`node .github/scripts/check-env-example.mjs .env` and refuses to start if `.env`
+holds a secret key or a database URL, because anything compiled into an APK can
+be read back out of it.
+
+On an Android emulator `127.0.0.1` is the emulator itself, so a local stack's URL
+in `.env` should be `http://10.0.2.2:54321`.
+
+The app opens on **Sign in with DevDogs**. Sign in once, then fill your database
+with believable classmates and sessions:
+
+```bash
+npx @devdogsuga/devtools@next dev-data
+```
+
+It runs [`supabase/dev-data.sql`](../../supabase/dev-data.sql) as the member who
+signed in last, refuses DogPack's production project, and is safe to run again.
+
+## Make a UI-only change
+
+`lib/screens/home_screen.dart` is the signed-in home. Change its text, or the
+brand theme in `lib/app.dart`, and press `r` in the terminal for hot reload. The
+sign-in gate is `gateRedirect` in `lib/router.dart`; read it before you add a
+screen, because every new screen sits behind it.
 
 ## Check it
 
