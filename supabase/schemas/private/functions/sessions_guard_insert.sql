@@ -8,10 +8,7 @@ security definer
 set search_path = ''
 as $$
 begin
-  if not exists (
-    select 1 from dogpack.profiles p
-    where p."userId" = new."hostId" and p."onboardedAt" is not null
-  ) then
+  if not private.is_onboarded(new."hostId") then
     raise exception 'onboarding_required' using errcode = 'PT403';
   end if;
   if not private.is_enrolled(new."hostId", new."term", new."course") then

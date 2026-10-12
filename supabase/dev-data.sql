@@ -17,8 +17,8 @@
 --   * a session that ended yesterday
 --   * a session you host, and one you have joined (once you are onboarded)
 -- If you have no courses yet, you are enrolled in three so there is something
--- to show. Hosting and joining need a finished onboarding; until then you only
--- see the classmates' sessions.
+-- to show. Hosting, joining and seeing a course's sessions need a finished
+-- onboarding; until then you see none of the classmates' sessions either.
 do $$
 declare
   v_member uuid := current_setting('devtools.member_id')::uuid;

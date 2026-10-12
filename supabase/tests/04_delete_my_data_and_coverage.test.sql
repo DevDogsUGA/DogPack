@@ -40,7 +40,7 @@ insert into dogpack.blocks ("blockerId", "blockedId") values
 select moderation.apply_event('msg_ban', '{"type":"user.ban","timestamp":"2027-01-01T00:00:00Z","data":{"userId":"bbbbbbbb-0000-4000-8000-000000000001","reason":null,"reportId":null}}'::jsonb);
 update auth.users set banned_until = null where id = '00000000-0000-4000-8000-0000000000d1';
 
-select plan(15);
+select plan(17);
 
 select tests.as_user('00000000-0000-4000-8000-0000000000d1');
 select is(dogpack.delete_my_data(), '{"blocks":1,"profiles":1,"sessions":1,"enrollments":2,"memberships":1}'::jsonb, 'delete_my_data reports what it removed');
@@ -61,6 +61,14 @@ select is((select count(*)::int from auth.users where id = '00000000-0000-4000-8
 -- (Leaver is banned in this fixture; lift it so the guard reaches the term check.)
 delete from moderation.user_states where "platformUserId" = 'bbbbbbbb-0000-4000-8000-000000000001';
 select throws_ok($$insert into dogpack.enrollments ("userId", "term", "course") values ('00000000-0000-4000-8000-0000000000d1', 209901, 'CSCI 9999')$$, 'PT422', 'unknown_term', 'after deleting your data the initial-enrollment exception is gone: an unknown term is refused');
+
+-- Hosting and joining read the same marker: a profile with onboardedAt. Deleting
+-- your data removes it, so both ask the member to onboard again.
+reset role;
+select tests.as_user('00000000-0000-4000-8000-0000000000d1');
+select throws_ok($$insert into dogpack.sessions ("term", "course", "title", "location", "startsAt", "endsAt", "capacity") values (202808, 'CSCI 1301', 'Again', 'x', now() + interval '1 day', now() + interval '1 day 1 hour', 4)$$, 'PT403', 'onboarding_required', 'after deleting your data a member cannot host until they onboard again');
+select throws_ok($$insert into dogpack.session_members ("sessionId") values ('55555555-5555-4555-8555-555555555552')$$, 'PT403', 'onboarding_required', 'and cannot join a session either (the same marker as hosting)');
+reset role;
 
 -- Every table in the app's schemas has row level security on; a new table that
 -- forgets it fails here, before review. (Its policies still need their own tests.)

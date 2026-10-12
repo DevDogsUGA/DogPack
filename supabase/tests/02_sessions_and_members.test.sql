@@ -37,7 +37,7 @@ insert into dogpack.enrollments ("userId", "term", "course") values
   ('00000000-0000-4000-8000-0000000000e4', 202808, 'ARTS 1100'),
   ('00000000-0000-4000-8000-0000000000e5', 202808, 'CSCI 1301');
 
-select plan(44);
+select plan(48);
 
 -- Creating a session.
 select tests.as_user('00000000-0000-4000-8000-0000000000e1');
@@ -89,6 +89,11 @@ insert into dogpack.session_members ("sessionId") values ('11111111-1111-4111-81
 select pass('the first classmate joins');
 select throws_ok($$insert into dogpack.session_members ("sessionId") values ('11111111-1111-4111-8111-111111111111')$$, '23505', null, 'joining twice is a duplicate key');
 select throws_ok($$insert into dogpack.session_members ("sessionId", "userId") values ('11111111-1111-4111-8111-111111111111', '00000000-0000-4000-8000-0000000000e3')$$, '42501', null, 'a member cannot enrol another member in a session');
+-- A forged userId is refused before the guard says anything about the session or
+-- the other member: not onboarding_required, not_enrolled or session_unavailable.
+select throws_ok($$insert into dogpack.session_members ("sessionId", "userId") values ('11111111-1111-4111-8111-111111111111', '00000000-0000-4000-8000-0000000000e5')$$, '42501', null, 'a forged userId for a member who has not onboarded gets 42501, not onboarding_required');
+select throws_ok($$insert into dogpack.session_members ("sessionId", "userId") values ('11111111-1111-4111-8111-111111111111', '00000000-0000-4000-8000-0000000000e4')$$, '42501', null, 'a forged userId for a member of another course gets 42501, not not_enrolled');
+select throws_ok($$insert into dogpack.session_members ("sessionId", "userId") values ('99999999-9999-4999-8999-999999999999', '00000000-0000-4000-8000-0000000000e3')$$, '42501', null, 'and a forged userId on a session that does not exist gets 42501, not session_unavailable');
 reset role;
 select tests.as_user('00000000-0000-4000-8000-0000000000e4');
 select throws_ok($$insert into dogpack.session_members ("sessionId") values ('11111111-1111-4111-8111-111111111111')$$, 'PT403', 'not_enrolled', 'a member of another course cannot join');
@@ -166,6 +171,11 @@ select tests.as_user('00000000-0000-4000-8000-0000000000e1');
 insert into dogpack.sessions ("id", "term", "course", "title", "location", "startsAt", "endsAt", "capacity")
   values ('22222222-2222-4222-8222-222222222222', 202808, 'CSCI 1301', 'Second', 'Library', now() + interval '2 days', now() + interval '2 days 1 hour', 4);
 reset role;
+-- service_role (the platform's own code) may add a member on their behalf.
+set local role service_role;
+insert into dogpack.session_members ("sessionId", "userId") values ('22222222-2222-4222-8222-222222222222', '00000000-0000-4000-8000-0000000000e2');
+reset role;
+select is((select count(*)::int from dogpack.session_members where "sessionId" = '22222222-2222-4222-8222-222222222222' and "userId" = '00000000-0000-4000-8000-0000000000e2'), 1, 'service_role can add a member with an explicit userId');
 select tests.as_user('00000000-0000-4000-8000-0000000000e3');
 insert into dogpack.blocks ("blockedId") values ('00000000-0000-4000-8000-0000000000e1');
 select is((select count(*)::int from dogpack.sessions), 0, 'blocking a host hides their sessions from the blocker');

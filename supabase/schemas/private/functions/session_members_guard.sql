@@ -3,10 +3,16 @@
 -- raises `session_full` (PT409) when the host plus the members fill capacity.
 -- The host counts as a seat, which is why the test is `1 + count >= capacity`.
 --
--- Joining needs finished onboarding (a private.onboarded_users row, the marker
--- enrollments_guard reads for the add/drop exception). Without it a member could
--- add a course after the deadline as the one-time initial enrollment and then
--- join its sessions, so the exception would never expire.
+-- Joining needs finished onboarding (private.is_onboarded, the same check
+-- hosting and discovering use). Without it a member could add a course after the
+-- deadline as the one-time initial enrollment and then join its sessions, so the
+-- exception would never expire.
+--
+-- A member can only join as themselves. The check comes first, before any
+-- answer that depends on the session or on someone else's state, so a forged
+-- userId learns nothing from the error it gets. It applies to the API roles
+-- (`role` is the SET ROLE value, which a security definer function still sees);
+-- service_role and a direct database connection stand aside.
 --
 -- It is SECURITY DEFINER because locking a row for update needs the update
 -- policy, which only the host passes.
@@ -20,7 +26,11 @@ declare
   v_session dogpack.sessions%rowtype;
   v_taken integer;
 begin
-  if not exists (select 1 from private.onboarded_users o where o."userId" = new."userId") then
+  if current_setting('role') in ('authenticated', 'anon')
+     and new."userId" is distinct from (select auth.uid()) then
+    raise exception 'insufficient_privilege' using errcode = '42501';
+  end if;
+  if not private.is_onboarded(new."userId") then
     raise exception 'onboarding_required' using errcode = 'PT403';
   end if;
 
