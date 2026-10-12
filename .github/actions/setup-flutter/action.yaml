@@ -1,0 +1,24 @@
+name: Set up Flutter
+description: Flutter (stable) on PATH, with the pub cache restored.
+
+runs:
+  using: composite
+  steps:
+    # Not subosito/flutter-action: it calls `actions/cache@v5` internally, by
+    # tag, and a repository that requires every action pinned to a full commit
+    # SHA fails the job before it runs a step. A shallow clone of the stable
+    # branch is the SDK that action installs.
+    - name: Install Flutter (stable)
+      shell: bash
+      run: |
+        git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+        echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+    - name: Restore the pub cache
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      with:
+        path: ~/.pub-cache
+        key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+        restore-keys: pub-${{ runner.os }}-
+    - name: Flutter version
+      shell: bash
+      run: flutter --version

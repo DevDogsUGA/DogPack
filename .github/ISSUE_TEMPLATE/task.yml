@@ -1,0 +1,25 @@
+name: Task
+description: A small, well-scoped piece of work (officers and leads file these)
+labels: []
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What to build
+      description: Under an hour of work. Say what the result looks like.
+    validations:
+      required: true
+  - type: input
+    id: file
+    attributes:
+      label: The file it touches
+      description: Link it, for example lib/main.dart.
+    validations:
+      required: true
+  - type: textarea
+    id: check
+    attributes:
+      label: Acceptance check
+      description: How the author and the reviewer can tell it works, ideally a command (`flutter test`).
+    validations:
+      required: true

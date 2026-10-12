@@ -1,0 +1,16 @@
+# One approval from a code owner is the ordinary merge gate. The DogPack leads
+# own the app: Shruti Mishra (smcodes612) and Shakthi Karthik (skarthikb-tech).
+* @smcodes612 @skarthikb-tech
+
+# Workflow and repository-policy changes, the tooling config, and the dependency
+# bot require DevOps review.
+/.github/** @DevDogsUGA/devops
+/devtools.config.json @DevDogsUGA/devops
+/renovate.json5 @DevDogsUGA/devops
+
+# The database: DevOps, and the leads, who also read every generated plan.
+/supabase/** @DevDogsUGA/devops @smcodes612 @skarthikb-tech
+
+# Only admins own the ownership policy itself. This must stay after the rules
+# above because the last matching CODEOWNERS pattern wins.
+/.github/CODEOWNERS @DevDogsUGA/admins

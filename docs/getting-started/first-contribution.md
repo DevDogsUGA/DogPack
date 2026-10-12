@@ -1,54 +1,55 @@
----
-name: Your first contribution
-description: A small, low-risk UI change to prove your setup works end to end, then opening a pull request.
-order: 3
-section: getting-started
----
-
 # Your first contribution
 
-A first change that touches nothing risky: edit some visible text or the
-theme on the home screen in `lib/main.dart`, see it render, and open a pull
-request. This exercises your whole setup — Flutter, the emulator, and the
-repo's checks — before you touch anything that talks to Supabase.
+A first change that touches nothing risky: edit some visible text or the theme
+on the home screen, see it render, and open a pull request. It exercises your
+Flutter install, your emulator and the repository's checks before you touch
+anything that talks to Supabase.
+
+## Prerequisites
+
+- The [Flutter SDK](https://docs.flutter.dev/get-started/install) on your `PATH`
+  (`flutter --version`), and an Android emulator or a phone. iPhone users need a
+  Mac to run the app from source.
+- Git, and a fork of this repository if you are not on the DevDogs team.
 
 ## Make a UI-only change
 
-Open `apps/study-group-finder/lib/main.dart`. `StudyGroupFinderApp` is the
-whole app today: a `MaterialApp` with a Material 3 theme
-(`colorSchemeSeed: const Color(0xFFBA0C2F)`) and a `Scaffold` whose body is a
-centred `Text`. Change the label text, or try a different `colorSchemeSeed`
-— nothing here touches Supabase, so there is nothing to break.
+Open `lib/main.dart`. `StudyGroupFinderApp` is the whole app today: a
+`MaterialApp` with a Material 3 theme (`colorSchemeSeed: const Color(0xFFBA0C2F)`)
+and a `Scaffold` whose body is a centred `Text`. Change the label, or try a
+different `colorSchemeSeed`. Nothing here touches Supabase, so there is nothing
+to break.
 
 ## Run it
 
 ```bash
-pnpm -F study-group-finder dev
+flutter pub get
+flutter run \
+  --dart-define=SUPABASE_URL=http://localhost:54321 \
+  --dart-define=SUPABASE_PUBLISHABLE_KEY=placeholder
 ```
 
-Confirm your change shows up on the emulator (or device) Flutter picks.
-Flutter's hot reload (press `r` in the terminal running `flutter run`) applies
-most edits without a full restart.
+The app initializes the Supabase client at start-up, which needs *a* URL and key
+but makes no request, so the placeholders are enough for a UI change. Press `r`
+in the terminal for hot reload.
 
 ## Check it
 
 ```bash
-pnpm --filter study-group-finder lint    # flutter analyze
-pnpm --filter study-group-finder test    # flutter test
+flutter analyze
+flutter test
 ```
 
-If you are running the repo-wide checks instead, this app's `test` task
-needs the Flutter SDK on `PATH` and fails rather than skipping without it —
-`pnpm test --filter='!study-group-finder'` is the filter CI itself uses when
-Flutter is out of scope for a change.
+These are what the `flutter` check runs on your pull request. Neither needs a
+database.
 
 ## Open a pull request
 
-Branch from `main`, keep the commit focused
-(`type(scope): subject` — see [Contributing](../../_shared/guides/contributing.md)
-for the full flow and what CI runs), and open a PR against `main`.
-`.github/CODEOWNERS` routes `apps/study-group-finder/**` to
-`@DevDogsUGA/study-group-finder` for review.
+Branch from `main`, keep the commit focused (`type(scope): subject`, for example
+`feat(onboarding): add the name step`), link the issue it closes, and open a
+pull request against `main`. [CONTRIBUTING.md](../../CONTRIBUTING.md) has the
+rest, including who reviews: `.github/CODEOWNERS` routes your pull request to the
+DogPack leads.
 
-From here, [Schema change loop](../guides/schema-change-loop.md)
-is the next page once your work needs a new table.
+When your work needs a new table, [Schema change loop](../guides/schema-change-loop.md)
+is the next page.

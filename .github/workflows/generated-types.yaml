@@ -1,0 +1,68 @@
+name: Generated types
+
+# Q82: generated types are not committed. This uploads the Dart models for the
+# schema on `main` to a rolling prerelease, `generated-types`, as
+# dogpack-types-<schema hash>.tgz, so `devtools db types --download` can fetch
+# the exact models a checkout needs without Docker. A new asset on every schema
+# change; about 200 kept.
+#
+# The hash is devtools' (`db hash`): the sorted schema paths, their LF-normalised
+# contents and the generator version (the pinned CLI, or the supadart version
+# pubspec.lock resolves), so the paths below are the inputs that move it.
+on:
+  push:
+    branches: [main]
+    paths:
+      - supabase/schemas/**
+      - supabase/config.toml
+      - pubspec.yaml
+      - pubspec.lock
+      - supadart.yaml
+      - devtools.config.json
+      - .github/scripts/**
+      - .github/workflows/generated-types.yaml
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build and pack, upload nothing (the asset is attached to the run).
+        type: boolean
+        default: true
+
+concurrency:
+  group: generated-types
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    # Uploading needs `main`: a manual run on another ref only ever dry-runs.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && (inputs.dry_run || github.ref != 'refs/heads/main') }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./.github/actions/setup-flutter
+      - uses: ./.github/actions/setup-supabase
+      - run: flutter pub get
+      - name: Build the models and upload them
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! find supabase/schemas -name '*.sql' -print -quit 2>/dev/null | grep . >/dev/null; then
+            echo 'No schema under supabase/schemas yet: nothing to generate.' | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          bash .github/scripts/generated-types.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: env.DRY_RUN == 'true'
+        with:
+          name: dogpack-types
+          path: dogpack-types-*.tgz
+          if-no-files-found: ignore
+          retention-days: 7

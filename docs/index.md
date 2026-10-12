@@ -1,56 +1,51 @@
----
-name: Study Group Finder
-description: The Flutter app for finding study groups.
-order: 40
-os: [macos, linux, wsl, windows]
----
+# DogPack
 
-# Study Group Finder
-
-`apps/study-group-finder` — branded "Dog Pack" — is DevDogs' Flutter app for
-finding and forming study groups, targeting **Android and iOS** (no web
-build). It is the only app in the monorepo that is not Next.js, which is most
-of what makes it different to work on.
+DogPack is DevDogs' app for finding and forming study groups with other UGA
+students. It is a Flutter app for **Android and iOS** (there is no web build),
+with its own Supabase project behind it. Sign-in is "Sign in with DevDogs": the
+DevDogs platform is the identity provider, so nobody makes a DogPack password.
 
 > [!TIP]
-> Just getting started? Head to
-> [Getting started](../_shared/getting-started/prerequisites.md). Picking up a
-> task? The work is tracked as GitHub issues in the
-> [DogPack repository](https://github.com/DevDogsUGA/DogPack/issues).
+> New here? Start with [Your first contribution](./getting-started/first-contribution.md).
+> The work is tracked as [GitHub issues](https://github.com/DevDogsUGA/DogPack/issues),
+> grouped into [milestones](https://github.com/DevDogsUGA/DogPack/milestones) by feature.
 
-## Architecture
+## How the pieces fit
 
 ```
-Flutter client (Android/iOS)
-  --dart-define (from the shared root .env, via with-env)
-  --> supabase_flutter --> Supabase over HTTP
-        - PostgREST: study_group_finder schema
-        - Auth: "Sign in with DevDogs" provider
-  <-- generated Dart models (supadart)
+Flutter client (Android / iOS)
+  --dart-define values (public only)
+  --> supabase_flutter --> DogPack's own Supabase project, over HTTP
+        - PostgREST: the app's tables, guarded by Row Level Security
+        - Auth: the "Sign in with DevDogs" provider (OAuth against the platform)
+  <-- Dart models generated from the schema (supadart)
 ```
 
-The client talks to the shared DevDogs Supabase project the same way every
-other app does — over HTTP, never a direct database connection — and owns the
-**`study_group_finder`** Postgres schema. `supabase/migrations/20260829000000_00_schemas_and_grants.sql`
-reserves the schema and its PostgREST grants; it declares no tables yet, so
-isolation is by RLS, not by the schema boundary. Sign-in goes through the
-platform's own OAuth server (see
-[Sign-in](../_shared/getting-started/running.md#sign-in)) rather than the
-app holding its own user store. Dart models are generated from the live
-schema by [supadart](./guides/typed-models.md), not
-hand-written.
+- **The database is the source of truth for access.** The app talks to Supabase
+  over HTTP with the publishable key, so Row Level Security is the only thing
+  between a client and every row. See [Schema change loop](./guides/schema-change-loop.md).
+- **Schema changes are SQL files.** Contributors edit `supabase/schemas/*.sql`
+  and never write migrations; the pipeline plans the migration, a person reads
+  it, and the deploy applies exactly that SQL.
+- **Dart models are generated, not committed.** See [Typed models](./guides/typed-models.md).
+- **Sign-in goes through the platform's OAuth server.** The app never holds a user
+  store of its own.
 
 ## Glossary
 
-- **Dog Pack** — this app's brand name.
-- **`study_group_finder`** — this app's Postgres schema. Reserved, not yet
-  populated; see [Schema change loop](./guides/schema-change-loop.md).
-- **supadart** — the community Dart codegen tool that reads Supabase's
-  default PostgREST schema; see [Typed models](./guides/typed-models.md).
-- **`--dart-define`** — how Supabase config (URL, publishable key, auth mode)
-  reaches the compiled app; see [Prerequisites](../_shared/getting-started/prerequisites.md).
+- **DogPack**: this app. Its Android and iOS ID is `dev.dogpack`, and the
+  sign-in callback is `dev.dogpack://login-callback`.
+- **Schema tree**: `supabase/schemas/`, the declared shape of the database.
+- **supadart**: the community Dart generator for typed models; see
+  [Typed models](./guides/typed-models.md).
+- **`--dart-define`**: how configuration (the Supabase URL and publishable key)
+  reaches the compiled app.
+- **generated-types release**: the rolling GitHub release where CI keeps the
+  models for every schema version, so you can download instead of generating.
 
 ## Where to go next
 
-- [Where things live](./guides/where-things-live.md) — a map of the app tree
-- [Testing](./guides/testing.md) — `flutter analyze`/`flutter test`, and what CI runs
+- [Where things live](./guides/where-things-live.md): a map of the repository
+- [Testing](./guides/testing.md): `flutter analyze`, `flutter test`, and what CI runs
+- [Schema change loop](./guides/schema-change-loop.md): adding a table, with RLS
+- [Typed models](./guides/typed-models.md): how the Dart models are made

@@ -1,0 +1,19 @@
+name: Destructive gate
+
+# Who applied the allow-destructive label. Runs on pull_request_target so its
+# token can remove a label a non-DevOps user applied, which means it must NEVER
+# check out or run the pull request's code: the shared workflow takes its
+# script from the base branch and the pinned DevDogsUGA commit and reads nothing
+# but the pull request number. Do not add steps to this file.
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+jobs:
+  destructive-gate:
+    uses: DevDogsUGA/DevDogsUGA/.github/workflows/destructive-gate.yaml@b35b543970f9ed009e8a17c076e1da922421382f
+    with:
+      shared_ref: b35b543970f9ed009e8a17c076e1da922421382f

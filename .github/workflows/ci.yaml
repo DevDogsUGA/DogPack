@@ -1,0 +1,137 @@
+name: CI
+
+# Four checks, each reported under its own name: `validate`, `flutter`,
+# `android` and `database` (the main-ci ruleset requires validate, database and
+# flutter; android is the emulator smoke test and is advisory while it earns
+# trust). The destructive gate is database.yaml and destructive-gate.yaml.
+#
+# `merge_group` is here because the merge queue builds a temporary branch and
+# waits for these checks on it: without the trigger a queued pull request waits
+# forever.
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.event_name == 'merge_group' && github.run_id || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # Everything that needs no SDK: the workflows, the Markdown, the env manifest.
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Lint the workflows (actionlint)
+        run: |
+          set -euo pipefail
+          version=1.7.12
+          archive="actionlint_${version}_linux_amd64.tar.gz"
+          curl -fsSL -o "$RUNNER_TEMP/$archive" "https://github.com/rhysd/actionlint/releases/download/v${version}/${archive}"
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $RUNNER_TEMP/$archive" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -color
+      - name: Every relative link in the Markdown resolves
+        run: node .github/scripts/check-docs.mjs
+      # .env.example ships in the app: its keys become --dart-define values
+      # compiled into the binary, so it holds public values only (Q27).
+      - name: .env.example holds public values only
+        run: node .github/scripts/check-env-example.mjs
+      - name: The check scripts test themselves
+        run: node --test .github/scripts/*.test.mjs
+      - name: The shell scripts parse
+        run: for f in .github/scripts/*.sh; do bash -n "$f"; done
+
+  flutter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./.github/actions/setup-flutter
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  # The debug APK builds and RUNS: installed on an emulator, launched, and
+  # checked for a crash. `flutter test` runs the widgets on the host and cannot
+  # see a missing permission, a bad manifest or a native crash on start-up.
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: ./.github/actions/setup-flutter
+      - run: flutter pub get
+      # The app initializes its Supabase client at start-up, which needs a URL
+      # and a key but makes no request. These are placeholders, not a project.
+      - name: Build the debug APK
+        run: >-
+          flutter build apk --debug
+          --dart-define=SUPABASE_URL=http://10.0.2.2:54321
+          --dart-define=SUPABASE_PUBLISHABLE_KEY=ci-placeholder
+      # The runner's emulator needs hardware acceleration; /dev/kvm exists but
+      # is not usable by the runner user until this rule is applied.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Boot an emulator and start the app
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          disable-animations: true
+          script: bash .github/scripts/android-smoke.sh build/app/outputs/flutter-apk/app-debug.apk dev.dogpack
+      - name: Keep the screenshot and the log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: android-smoke
+          path: |
+            android-smoke.png
+            android-smoke.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # What a pull request does to the database. Unconditional, deliberately: a
+  # security check that skips itself on a path filter is the failure mode that
+  # leaves an RLS hole unchecked. With no schema it passes in a few seconds.
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # The base branch's schema and types are read from git.
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-flutter
+      - uses: ./.github/actions/setup-supabase
+      - run: flutter pub get
+      - name: Apply, test and generate
+        env:
+          BASE_SHA: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # A first push has no "before": compare with the commit it follows.
+          case "$BASE_SHA" in 0000000000000000000000000000000000000000|"") BASE_SHA=$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD) ;; esac
+          BASE_SHA="$BASE_SHA" bash .github/scripts/db-check.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: hashFiles('lib/generated/**') != ''
+        with:
+          name: dart-models
+          path: lib/generated
+          retention-days: 14

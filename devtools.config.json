@@ -1,0 +1,13 @@
+{
+  "product": "dogpack",
+  "name": "DogPack",
+  "supabase": {
+    "version": "2.117.0",
+    "schemas": ["dogpack"]
+  },
+  "types": { "kind": "supadart", "out": "lib/generated" },
+  "generatedTypes": { "repo": "DevDogsUGA/DogPack" },
+  "oauth": { "redirectUris": ["dev.dogpack://login-callback"] },
+  "production": { "projects": ["dogpack"] },
+  "runHint": "flutter run --dart-define-from-file=.env"
+}

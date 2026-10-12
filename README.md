@@ -1,71 +1,56 @@
-# study-group-finder
+# DogPack
 
-DevDogs Study Group Finder — a Flutter app on the shared DevDogs Supabase
-project, owning the **`study_group_finder`** Postgres schema.
+DogPack is DevDogs' app for finding and forming study groups with other UGA
+students: onboarding with your courses, creating and joining sessions, and a
+discover feed of what is happening in your classes. It is built by DevDogs
+members, one small issue at a time.
 
-Currently a placeholder (`lib/main.dart` → `StudyGroupFinderApp`). The schema is
-reserved by a `supabase/migrations/<timestamp>_study_group_finder_<desc>.sql`
-migration and exposed in `config.toml`; tables are added as the app is built.
+- **App:** Flutter, Android and iOS (`dev.dogpack`). No web build.
+- **Backend:** its own Supabase project. Access is Row Level Security all the way
+  down, and the schema is plain SQL in `supabase/schemas/`.
+- **Sign-in:** "Sign in with DevDogs", through the DevDogs platform.
 
-Branded **Dog Pack**, with `dogpack.dev` reserved for its eventual web
-deployment — `STUDY_GROUP_FINDER_URL` and `STUDY_GROUP_FINDER_URL_CALLBACK` are
-already declared in `supabase/env.ts` and in `config.toml`'s auth redirect
-allowlist, unset until the deploy exists. In-app branding is unchanged for now,
-by decision.
+The app is at the skeleton stage: the repository, CI and docs are in place and
+the features arrive milestone by milestone (below).
 
-## Prerequisites
+## Contribute
 
-- The [Flutter SDK](https://docs.flutter.dev/get-started/install) on `PATH`
-  (`flutter --version`). The rest of the monorepo does not need it — CI scopes
-  Flutter tasks separately.
-- A configured root `.env` (see the repo README) for the shared Supabase creds.
+1. Read [Your first contribution](docs/getting-started/first-contribution.md).
+2. Pick an issue labelled [`good first issue`](https://github.com/DevDogsUGA/DogPack/labels/good%20first%20issue).
+   Each takes under an hour, names the file it touches and states how to check it.
+3. Open a pull request. [CONTRIBUTING.md](CONTRIBUTING.md) has the rules; the DogPack
+   leads review.
 
-## Develop
+Stuck, or something in the docs is wrong? Ask in the club Discord instead of
+guessing.
 
-Run through the workspace so Supabase config comes from the shared root `.env`:
+## Roadmap
 
-```bash
-pnpm -F study-group-finder dev   # local stack auto-detected, else remote
-```
+Work is grouped into [milestones](https://github.com/DevDogsUGA/DogPack/milestones),
+one per feature. The dates are the weeks the feature is due.
 
-These pass `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY` / `AUTH_MODE` to Flutter
-via `--dart-define`. Auth mirrors the web apps: `devdogs` (platform OAuth
-server) in dev, `google` in production — selected by `NEXT_PUBLIC_AUTH_MODE`
-in `.env` (`AUTH_MODE` is only the `--dart-define` name it maps onto).
+| Milestone | Due |
+| --- | --- |
+| Polish (branded sign-in, states, accessibility, empty states, copy) | rolling |
+| Onboarding + Enrollments | Oct 26 |
+| Profile (view and edit, enrollment changes, delete my data) | Nov 2 |
+| Sessions: create, edit, cancel | Nov 2 |
+| Discover + Join/Leave | Nov 9 |
+| Report & Block | Nov 16 |
+| Complete (runbook, handoff) | Dec 2 |
+| Store Release (stretch) | |
 
-The app ID is `dev.dogpack` on both platforms. OAuth returns to
-`dev.dogpack://login-callback`, registered as a URL scheme in
-`AndroidManifest.xml` and `ios/Runner/Info.plist` and allowlisted in
-`supabase/config.toml`'s `additional_redirect_urls`.
+Future milestones, sliced when a spring group picks them up: Reminders, Session
+Chat, Live Updates, Profile Photos, Find a Time, CRN Enrollments, Offline Cache.
 
-## Typed models
+## Documentation
 
-`supabase gen types` has no Dart target, so Dart models come from the community
-[supadart](https://pub.dev/packages/supadart) generator (`supadart.yaml`):
+- [Docs index](docs/index.md): how the pieces fit
+- [Where things live](docs/guides/where-things-live.md)
+- [Testing](docs/guides/testing.md): what CI checks
+- [Schema change loop](docs/guides/schema-change-loop.md): adding a table, with RLS
+- [Typed models](docs/guides/typed-models.md): the generated Dart models
 
-```bash
-pnpm -F study-group-finder types:db   # local stack auto-detected, else remote
-```
+## License
 
-supadart can only read PostgREST's **default** schema (it reads `/rest/v1/`
-without an `Accept-Profile` header and has no schema option). To make that work,
-`supabase/config.toml` lists `study_group_finder` **first** in
-`[api] schemas`, so it _is_ the default REST profile and supadart reads exactly
-this app's schema — no per-run config juggling. Nothing else depends on the
-default (every Supabase client sets its `db.schema` explicitly).
-
-`types:db` maps the monorepo's `API_URL`/`SECRET_KEY` onto the
-`SUPABASE_URL`/`SUPABASE_API_KEY` supadart expects (the **secret** key is
-required — supadart 401s on the publishable key when fetching the spec). The
-schema is currently empty, so this is a no-op until tables are added.
-
-## pnpm workspace
-
-`package.json` is a thin task wrapper (`build`/`dev`/`test`/`lint`/
-`typecheck`/`types:db`) so pnpm's workspace filters (`pnpm -F
-study-group-finder run <task>`) can orchestrate the Flutter toolchain. There is
-no `web/` target in this app, so `build` produces a debug APK
-(`flutter build apk --debug`) for fast validation that the app compiles.
-Release Android/iOS artifacts are built in dedicated pipelines, not through
-this wrapper. CI does not run this script — it analyzes and tests the app
-directly (see `.github/workflows/ci.yaml`).
+[BSD 3-Clause](LICENSE).

@@ -1,0 +1,12 @@
+name: Set up the Supabase CLI
+description: The Supabase CLI at the version devtools.config.json pins. That pin is also part of the generated-types hash.
+
+runs:
+  using: composite
+  steps:
+    - name: Install the pinned Supabase CLI
+      shell: bash
+      run: |
+        version=$(node -p "require('./devtools.config.json').supabase.version")
+        npm install --global "supabase@$version"
+        supabase --version

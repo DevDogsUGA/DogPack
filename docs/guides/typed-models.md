@@ -1,59 +1,55 @@
----
-name: Typed models
-description: How Dart models are generated with supadart, the default-schema constraint that dictates config.toml ordering, and why generation is a no-op until the schema has tables.
-order: 2
-section: guides
----
-
 # Typed models
 
-`supabase gen types` has no Dart target, so this app gets its typed models from
-the community [supadart](https://pub.dev/packages/supadart) generator rather
-than from the same path the web apps use.
+`supabase gen types` has no Dart target, so DogPack gets its typed models from
+the community [supadart](https://pub.dev/packages/supadart) generator. The
+models are **never committed**: `lib/generated/` is git-ignored. You get them
+one of two ways.
+
+## Generate them from your database
 
 ```bash
-pnpm --filter study-group-finder types:db
+npx @devdogsuga/devtools@next db sync    # make your dev database match supabase/schemas/
+npx @devdogsuga/devtools@next db types   # run supadart against it
 ```
 
-That reads `supadart.yaml` (`output: lib/generated/`, `separated: true`) and
-writes one Dart model per table into the gitignored `lib/generated/` directory.
+`db sync` regenerates the models after it changes your database. Under the hood
+this is `dart run supadart`, which reads `supadart.yaml` (`output: lib/generated/`,
+`separated: true`) and writes one Dart model per table.
 
-## It needs the secret key
+## Download the ones CI built
 
-The `types:db` script maps the monorepo's `API_URL` and **`SECRET_KEY`**
-onto the `SUPABASE_URL` and `SUPABASE_API_KEY` supadart expects. The **secret**
-(service-role) key is required, not the publishable one: supadart fetches the
-OpenAPI spec and gets a `401` against the publishable key. That is why the
-service key is declared under the `study-group-finder:tooling` source in
-`env.ts` — it is a codegen-only credential that never ships in the app binary.
+```bash
+npx @devdogsuga/devtools@next db types --download
+```
+
+CI uploads a `dogpack-types-<hash>.tgz` asset to the rolling
+[`generated-types` release](https://github.com/DevDogsUGA/DogPack/releases/tag/generated-types)
+on every change to the schema. The hash covers the sorted paths and
+LF-normalized contents of `supabase/schemas/`, plus the generator version (the
+supadart version `pubspec.lock` resolves). If there is no asset for your exact
+checkout, the command says so and points you at `devtools setup`.
+
+## supadart needs the secret key
+
+supadart fetches the OpenAPI spec from PostgREST, and a publishable key gets a
+`401`. So generation needs your project's **secret** key. That is a tooling
+credential: it lives in the git-ignored `.env.tooling`, and it never becomes a
+`--dart-define`, because anything compiled into an APK can be read back out of it.
 
 > [!IMPORTANT]
-> Every runtime `--dart-define` value must stay `secrecy: "public"`: values
-> compiled into a Flutter binary are extractable from the shipped app, and a
-> completeness test enforces this. The secret key is _tooling_, used at codegen
-> time only, and never becomes a `--dart-define`.
+> Every `--dart-define` value must be public. `.env.example` is checked in CI
+> (`validate`) for keys that name a secret and values that look like one.
 
 ## The default-schema constraint
 
-supadart can only read PostgREST's **default** schema — it requests `/rest/v1/`
-with no `Accept-Profile` header and offers no way to name a schema. That single
-limitation dictates something in a shared config file:
-`supabase/config.toml` lists `study_group_finder` **first** under
-`[api] schemas`, and being first makes it the default REST profile, so supadart
-reads exactly this app's schema with no per-run juggling.
+supadart can only read PostgREST's **default** schema: it requests `/rest/v1/`
+with no `Accept-Profile` header and offers no way to name a schema. In
+`supabase/config.toml` the app's schema therefore goes **first** under
+`[api] schemas`, which makes it the default profile. The ordering is neither
+alphabetical nor arbitrary: do not tidy it.
 
-Nothing else depends on that ordering — every Supabase client in the repo sets
-its `db.schema` explicitly, this app included. But the reason
-`study_group_finder` sits at the top of that list is neither alphabetical nor
-arbitrary, and the `config.toml` comment says so: **do not "tidy" the ordering.**
+## It is a no-op until there are tables
 
-## It is a no-op today
-
-The `study_group_finder` schema has no tables yet
-(`supabase/migrations/20260829000000_00_schemas_and_grants.sql` reserves the
-schema and applies the PostgREST role grants, nothing more), so
-`types:db` currently produces nothing. Once the first tables land in a
-migration, running it will populate `lib/generated/`, and the models regenerate
-from the database the same way — the schema is always the source, the Dart is
-always output. See [Schema change loop](./schema-change-loop.md)
-for adding that first table.
+With an empty schema tree there is nothing to generate. Once the first tables
+land in `supabase/schemas/`, the models regenerate from the database every time:
+the schema is always the source, the Dart is always output.

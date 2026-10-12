@@ -1,153 +1,109 @@
----
-name: Schema change loop
-description: Adding a table to study_group_finder — the migration, the generated Dart model, and writing RLS so a client only ever reaches its own rows.
-order: 3
-section: guides
----
-
 # Schema change loop
 
-`study_group_finder` has no tables yet — every table this app gets starts
-with this loop. `your_table` below is a placeholder; swap in whatever you are
-actually building.
+Every table DogPack has starts with this loop. You edit **SQL files** in
+`supabase/schemas/`, and you never write a migration for an ordinary change:
+the pipeline plans the migration from your files, a reviewer reads that exact
+SQL, and the deploy applies it.
 
-## 1. Draft the migration
+`your_table` below is a placeholder; swap in whatever you are building.
 
-```bash
-pnpm devtools new-migration
-```
-
-It asks which app/schema the migration is for when you don't pass one
-(`--app study-group-finder`), and names the file
-`<timestamp>_study_group_finder_<desc>.sql` — the schema goes in the
-filename because one flat `supabase/migrations/` directory holds every app's
-migrations together, in the order they run.
-
-> [!IMPORTANT]
-> Before you merge, check `main` hasn't grown a newer migration than yours.
-> If it has, recreate your file with a fresh timestamp — CI fails a new
-> migration whose timestamp is older than `main`'s latest.
-
-## 2. Write the SQL
+## 1. Edit the schema tree
 
 ```sql
-create table "study_group_finder"."your_table" (
+-- supabase/schemas/dogpack/tables/your_table.sql
+create table "dogpack"."your_table" (
   "id" uuid primary key default gen_random_uuid(),
   "userId" uuid not null references auth.users (id) on delete cascade,
   -- your columns
   "createdAt" timestamptz not null default now()
 );
+
+alter table "dogpack"."your_table" enable row level security;
 ```
 
-Then enable RLS and write policies — see below. `study_group_finder`'s
-schema-level grants already exist
-(`supabase/migrations/20260829000000_00_schemas_and_grants.sql`): `anon` and
-`authenticated` get `INSERT`/`UPDATE`/`DELETE`/`SELECT` on every table by
-default, by way of `alter default privileges`. That grant is what makes RLS
-the only thing standing between a client and every row in your table — skip
-it and the table is wide open.
+Then write policies (below). A table with RLS enabled and **no policies at all**
+denies everything, which is the safe failure mode while you decide what a policy
+should say.
 
-## 3. Apply it and regenerate types
+## 2. Apply it to your own database and regenerate the models
 
 ```bash
-pnpm devtools apply-migrations   # db push; then offers the Database types
-pnpm --filter study-group-finder types:db
+npx @devdogsuga/devtools@next db sync
 ```
 
-`types:db` reads whatever tables exist through supadart, so a new
-table is picked up automatically — nothing to register. Regenerate rather
-than hand-editing `lib/generated/`; it is gitignored output, not source.
+`db sync` makes your development database match the tree. It never resets your
+database. It then regenerates the Dart models; see [Typed models](./typed-models.md).
 
-## 4. Use the generated model
+## 3. Test the policies
 
-```dart
-final rows = await Supabase.instance.client
-    .schema('study_group_finder')
-    .from('your_table')
-    .select();
+Write a pgTAP file under `supabase/tests/` that asserts an **allow and a deny**
+for every policy, and run it against your local stack:
+
+```bash
+supabase test db
 ```
 
-`.schema('study_group_finder')` matches the `postgrestOptions` the client was
-initialised with in `lib/main.dart` — set it explicitly rather than relying
-on which schema PostgREST treats as default.
+A policy test that only checks the allow side passes just as happily when the
+policy is missing entirely. The `database` check in CI runs the same suite
+against an empty database built from the tree, and fails if there are tables and
+no tests.
+
+## 4. Open the pull request
+
+CI plans the SQL your change runs and shows it in the job summary of
+`destructive-gate / destructive-sql`, with the type changes in `database`.
+
+Generated changes may only **add**. A change that drops a table or column,
+changes a column's type, or drops a policy without re-creating it is
+destructive. It needs either a hand-written `supabase/migrations/<timestamp>_<name>.sql`
+(reviewed by DevOps) or the `allow-destructive` label, which only a DevOps member
+can apply. The deploy asks a DevOps member to approve a destructive plan a
+second time.
 
 ## Row Level Security
 
-RLS is what actually protects your table — the schema boundary is
-organizational, not a security boundary: every schema in this project sits
-behind the same PostgREST endpoint and the same publishable key, so a client
-that can reach one schema can reach all three. Nothing stops a client from
-querying `study_group_finder` today and `platform` tomorrow with the same
-key; only each table's own policies decide what a given user gets back.
-
-**Enable it, always, before you write a policy:**
-
-```sql
-alter table "study_group_finder"."your_table" enable row level security;
-```
-
-A table with RLS enabled and **no policies at all** denies everything by
-default — that is the safe failure mode while you are still deciding what a
-policy should say.
+RLS is what protects your table. The app talks to PostgREST with the publishable
+key, so a client that can reach one table can try every table; only each
+table's own policies decide what a given user gets back.
 
 ### `auth.uid()`
 
-Every request PostgREST serves runs as either `anon` (no session) or
-`authenticated` (a valid Supabase Auth JWT), and `auth.uid()` reads the
-authenticated user's id straight out of that JWT — `null` for `anon`. A
-policy comparing a row's owner column against `auth.uid()` is how "only my
-own rows" gets enforced at the database, not trusted to the client.
+Every request PostgREST serves runs as `anon` (no session) or `authenticated` (a
+valid Supabase Auth JWT). `auth.uid()` reads the signed-in user's id out of the
+JWT, and is `null` for `anon`. A policy that compares a row's owner column with
+`auth.uid()` enforces "only my own rows" at the database instead of trusting the
+client.
 
 ### Policy shapes
 
-The repo's own convention (see `supabase/migrations/20260829020100_08_schedule_builder.sql`)
-is one `for all` policy per owner-scoped table, with the same predicate in
-`using` (which rows a query is allowed to see or touch) and `with check`
-(which rows a write is allowed to produce or leave behind):
+For an owner-scoped table, one `for all` policy with the same predicate in
+`using` (which rows a query may see or touch) and `with check` (which rows a
+write may produce):
 
 ```sql
-create policy "users_own_rows" on "study_group_finder"."your_table"
+create policy "users_own_rows" on "dogpack"."your_table"
   as permissive for all to "authenticated"
-  using (auth.uid() = "study_group_finder"."your_table"."userId")
-  with check (auth.uid() = "study_group_finder"."your_table"."userId");
+  using (auth.uid() = "userId")
+  with check (auth.uid() = "userId");
 ```
 
-Split it into one policy per command instead when the rule genuinely differs
-by operation — a table with public reads but owner-only writes needs a
-`select` policy open to `anon, authenticated` plus separate `insert`,
-`update` and `delete` policies scoped to the owner, rather than one `for all`
-policy trying to say both things at once:
+Split it into one policy per command when the rule differs by operation. A table
+with public reads and owner-only writes needs a `select` policy open to
+`anon, authenticated` plus separate `insert`, `update` and `delete` policies:
 
 ```sql
-create policy "public_read" on "study_group_finder"."your_table"
+create policy "public_read" on "dogpack"."your_table"
   for select to anon, authenticated using (true);
 
-create policy "owner_write" on "study_group_finder"."your_table"
+create policy "owner_write" on "dogpack"."your_table"
   for insert to authenticated with check (auth.uid() = "userId");
 ```
 
-A restrictive policy (`as restrictive`) narrows what a permissive policy
-already allowed — it's how a handful of tables in this repo close writes
-entirely (`no_client_insert`/`no_client_update`/`no_client_delete`, one
-policy per command) on rows only the server should ever write. Restrictive
-policies **AND** together and with the permissive set, so getting the split
-wrong is easy: a single restrictive `for all using (false)` also blocks
-`select`, silently cancelling a public-read policy on the same table. Write
-one restrictive policy per command you actually mean to close.
+A restrictive policy (`as restrictive`) narrows what permissive policies
+allowed, and it is how you close writes on rows only the server should write.
+Restrictive policies **AND** together and with the permissive set, so a single
+restrictive `for all using (false)` also blocks `select` and silently cancels a
+public-read policy. Write one restrictive policy per command you mean to close.
 
-### Testing it
-
-`packages/supabase/testing` is this repo's RLS persona suite — it signs in as
-real personas with `signInWithPassword` and asserts both sides of every rule:
-an allow and a deny. A policy test that only checks the allow side still
-passes when the policy is missing entirely, so always assert the deny too:
-
-```bash
-pnpm devtools supabase start && pnpm devtools supabase db reset
-pnpm --filter @devdogsuga/supabase test:rls
-```
-
-See [`@devdogsuga/supabase`](../../_shared/guides/stack/supabase.md?project=toolkit) for how the
-persona suite is wired up, and
-[Supabase's own RLS docs](https://supabase.com/docs/guides/database/postgres/row-level-security)
-for the mechanics beyond what's specific to this repo.
+See [Supabase's RLS docs](https://supabase.com/docs/guides/database/postgres/row-level-security)
+for the mechanics beyond this.
