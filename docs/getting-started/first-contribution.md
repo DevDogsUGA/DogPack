@@ -53,7 +53,9 @@ signed in last, refuses DogPack's production project, and is safe to run again.
 ## Make a UI-only change
 
 `lib/screens/home_screen.dart` is the signed-in home. Change its text, or the
-brand theme in `lib/app.dart`, and press `r` in the terminal for hot reload. The
+brand theme in `lib/app.dart`, and press `r` in the terminal for hot reload. If you change text a test looks for
+(`test/gate_test.dart` finds `Study sessions will show up here.`), change the
+assertion with it, or `flutter test` and the `flutter` check go red. The
 sign-in gate is `gateRedirect` in `lib/router.dart`; read it before you add a
 screen, because every new screen sits behind it.
 

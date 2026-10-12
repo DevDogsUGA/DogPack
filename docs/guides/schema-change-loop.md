@@ -19,6 +19,13 @@ create table "dogpack"."your_table" (
 );
 
 alter table "dogpack"."your_table" enable row level security;
+
+-- Grants are explicit; nothing is granted by default. `authenticated` gets only
+-- what members may do (RLS then narrows it). `service_role` is the Edge
+-- Functions AND the key the model generator uses: without this line
+-- `db sync` succeeds but no Dart model is generated for the table.
+grant select, insert, update, delete on table "dogpack"."your_table" to authenticated;
+grant select, insert, update, delete on table "dogpack"."your_table" to service_role;
 ```
 
 Then write policies (below). A table with RLS enabled and **no policies at all**

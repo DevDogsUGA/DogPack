@@ -40,6 +40,14 @@ credential: it lives in the git-ignored `.env.tooling`, and it never becomes a
 > Every `--dart-define` value must be public. `.env.example` is checked in CI
 > (`validate`) for keys that name a secret and values that look like one.
 
+## A table needs a `service_role` grant to get a model
+
+The generator reads PostgREST's spec as `service_role`, and the spec lists only
+the tables that role can select. A table with no
+`grant ... on table "dogpack"."x" to service_role` is silently skipped: no
+`x.dart`, no error. Every table in `supabase/schemas/dogpack/tables/` carries
+that grant; copy it.
+
 ## The schema and its enums
 
 supadart reads the schema named under `schemas:` in `supadart.yaml` (`dogpack`),
