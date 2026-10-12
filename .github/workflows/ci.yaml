@@ -135,3 +135,40 @@ jobs:
           name: dart-models
           path: lib/generated
           retention-days: 14
+
+  # The Edge Functions: unit tests, then the three functions against a local
+  # stack with the platform's APIs faked, then the capacity trigger under eight
+  # racing connections.
+  functions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.x
+      - uses: ./.github/actions/setup-supabase
+      - name: Unit tests
+        run: deno test -A --no-lock supabase/functions/_shared
+      - name: Start the stack
+        run: bash .github/scripts/db-stack.sh up
+      - name: The functions against the stack
+        run: bash .github/scripts/functions-check.sh
+      - name: The capacity trigger under contention
+        run: bash .github/scripts/capacity-race.sh
+      - name: Stop the stack
+        if: always()
+        run: bash .github/scripts/db-stack.sh down
+
+  # Every commit that lands on main is offered to production; production is a
+  # latch the Gate opens (DOGPACK_DEPLOYS_PRODUCTION, see deploy.yaml). DogPack
+  # has no staging (Q87): the checks above are the test.
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [validate, database, functions]
+    uses: ./.github/workflows/deploy.yaml
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read

@@ -1,0 +1,177 @@
+name: Deploy
+
+# DogPack's own deploy, built from the shared database block in DevDogsUGA
+# (deploy-database.yaml, pinned by commit SHA, Q15). Called by ci.yaml on every
+# push to main once `validate` and `database` are green, and runnable by hand.
+#
+# PRODUCTION ONLY (Q87). DogPack has no staging project: the pull request's
+# local stack (`database` and `functions` in ci.yaml) is the pre-production
+# test. Nothing here runs until the repository variable DOGPACK_DEPLOYS_PRODUCTION
+# is `true`; setting it is part of the Gate, not before. Then, in order:
+#
+#   production-database   the shared block: a read-only plan (`preflight`, the
+#                         migration_planner login), an approval of `production`
+#                         (devops; the author and the person who queued it
+#                         excluded), then the schema, and when the Supabase
+#                         configuration changed the config push and the DevDogs
+#                         sign-in provider. A plan that drops or rewrites data
+#                         needs a second approval, of `production-destructive`.
+#   production-functions  the three Edge Functions and their secrets, after an
+#                         approval of `production` again (the database job's
+#                         approval covers the schema, not code that runs with
+#                         the service role).
+#                         It ends by checking what it deployed: the API serves the
+#                         schema, a signed-out visitor gets nothing, and each
+#                         function refuses what it must (verify-deploy.sh).
+#
+# Every approved job refuses an approver who wrote or queued the change, and a
+# candidate that is no longer the head of main.
+on:
+  workflow_call:
+    inputs:
+      config:
+        description: Push supabase/config.toml and register the DevDogs sign-in provider.
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      config:
+        description: Push supabase/config.toml and register the DevDogs sign-in provider (the first deploy, or after the OAuth client changed).
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+env:
+  # One commit of DevDogsUGA for the shared block AND its scripts. Bump both
+  # lines below (and database.yaml, destructive-gate.yaml) together.
+  SHARED_REF: ce8e82f68ed0199cbb5d5e34f8bda08bd3dcb322
+  SUPABASE_VERSION: 2.117.0
+
+jobs:
+  # Does this deploy push the Supabase configuration? On a push, only when
+  # supabase/config.toml changed (every push asking for an approval just to find
+  # nothing changed would teach reviewers to click through).
+  resolve:
+    if: vars.DOGPACK_DEPLOYS_PRODUCTION == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      config: ${{ steps.config.outputs.config }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Is the Supabase configuration part of this deploy?
+        id: config
+        env:
+          REQUESTED: ${{ inputs.config }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          config=false
+          if [ "$REQUESTED" = true ]; then
+            config=true
+          elif [ -n "$BEFORE" ] && [[ ! "$BEFORE" =~ ^0+$ ]] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            if ! git diff --quiet "$BEFORE" "$GITHUB_SHA" -- supabase/config.toml; then config=true; fi
+          fi
+          echo "config=$config" >> "$GITHUB_OUTPUT"
+          echo "Supabase configuration in this deploy: $config" >> "$GITHUB_STEP_SUMMARY"
+
+  production-database:
+    needs: resolve
+    uses: DevDogsUGA/DevDogsUGA/.github/workflows/deploy-database.yaml@ce8e82f68ed0199cbb5d5e34f8bda08bd3dcb322
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    with:
+      environment: production
+      plan_environment: preflight
+      require_read_only_planner: true
+      destructive_environment: production-destructive
+      apply_config: ${{ needs.resolve.outputs.config == 'true' }}
+      register_provider: ${{ needs.resolve.outputs.config == 'true' }}
+      self_approval_gate: true
+      require_latest: true
+      supabase_version: 2.117.0
+      shared_ref: ce8e82f68ed0199cbb5d5e34f8bda08bd3dcb322
+
+  production-functions:
+    needs: production-database
+    if: >-
+      !cancelled()
+      && vars.DOGPACK_DEPLOYS_PRODUCTION == 'true'
+      && needs.production-database.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: DevDogsUGA/DevDogsUGA
+          ref: ${{ env.SHARED_REF }}
+          path: .shared
+          sparse-checkout: .github/scripts
+      - name: Refuse an approver who wrote or queued this change
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          node .shared/.github/scripts/approval-gate.mjs
+          --repo "$GITHUB_REPOSITORY" --run-id "$GITHUB_RUN_ID" --sha "$GITHUB_SHA"
+          --environment production
+      - name: Refuse an approved candidate that is no longer the head
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
+        run: |
+          latest=$(git ls-remote "https://github.com/$GITHUB_REPOSITORY.git" "refs/heads/$DEFAULT_BRANCH" | cut -f1)
+          if [ "$latest" != "$GITHUB_SHA" ]; then
+            echo "::error::Candidate $GITHUB_SHA was superseded by $latest. Nothing was changed; the newer commit has its own run."
+            exit 1
+          fi
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.x
+      - name: Install the Supabase CLI
+        run: npm install --global "supabase@$SUPABASE_VERSION" && supabase --version
+      - name: The functions type-check and their unit tests pass
+        run: |
+          set -euo pipefail
+          deno test -A --no-lock supabase/functions/_shared
+          for fn in enroll platform-moderation report; do deno check --no-lock "supabase/functions/$fn/index.ts"; done
+      - name: Deploy the functions, then set their secrets
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_REF: ${{ vars.PROJECT_REF }}
+          PLATFORM_API_URL: ${{ vars.PLATFORM_API_URL }}
+          PLATFORM_MODERATION_SECRET: ${{ secrets.PLATFORM_MODERATION_SECRET }}
+          DEVDOGS_OAUTH_CLIENT_ID: ${{ secrets.DEVDOGS_OAUTH_CLIENT_ID }}
+        run: |
+          set -euo pipefail
+          for name in PROJECT_REF PLATFORM_API_URL PLATFORM_MODERATION_SECRET DEVDOGS_OAUTH_CLIENT_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::The production environment has no $name (see docs/guides/backend.md). Nothing was deployed."
+              exit 1
+            fi
+          done
+          # Secrets first: a function that starts without its signing secret
+          # answers 503, and one that has the secret but not yet the code cannot
+          # be reached at all.
+          supabase secrets set --project-ref "$PROJECT_REF" \
+            "PLATFORM_MODERATION_SECRET=$PLATFORM_MODERATION_SECRET" \
+            "DEVDOGS_OAUTH_CLIENT_ID=$DEVDOGS_OAUTH_CLIENT_ID" \
+            "PLATFORM_API_URL=$PLATFORM_API_URL" \
+            "CATALOG_URL=${PLATFORM_API_URL%/}/catalog/v1"
+          # verify_jwt per function comes from supabase/config.toml.
+          supabase functions deploy --project-ref "$PROJECT_REF" --use-api
+          supabase functions list --project-ref "$PROJECT_REF"
+      - name: The API serves the schema and refuses a signed-out visitor
+        env:
+          API_URL: ${{ vars.API_URL }}
+          PUBLISHABLE_KEY: ${{ vars.PUBLISHABLE_KEY }}
+        run: bash .github/scripts/verify-deploy.sh
