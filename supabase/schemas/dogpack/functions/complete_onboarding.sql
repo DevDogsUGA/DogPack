@@ -39,3 +39,4 @@ $$;
 
 revoke all on function dogpack.complete_onboarding() from public, anon;
 grant execute on function dogpack.complete_onboarding() to authenticated;
+-- pin check
