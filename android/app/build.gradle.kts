@@ -18,7 +18,8 @@ android {
         applicationId = "dev.dogpack"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // sentry_flutter (via devdogsuga_sdk) needs 26: Android 8.0, 2017.
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
