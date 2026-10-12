@@ -8,7 +8,9 @@ anything that talks to the database.
 ## Prerequisites
 
 - The [Flutter SDK](https://docs.flutter.dev/get-started/install) on your `PATH`
-  (`flutter --version`), and an Android emulator or a phone. iPhone users need a
+  (`flutter --version`), run once with `flutter doctor` (a fresh Flutter SDK downloads
+  its engine artifacts on first use, and `devtools setup` fails with
+  `sky_engine ... doesn't exist` until it has), and an Android emulator or a phone. iPhone users need a
   Mac to run the app from source.
 - Git, and a fork of this repository if you are not on the DevDogs team.
 
