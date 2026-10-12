@@ -47,5 +47,6 @@ Flutter client (Android / iOS)
 
 - [Where things live](./guides/where-things-live.md): a map of the repository
 - [Testing](./guides/testing.md): `flutter analyze`, `flutter test`, and what CI runs
+- [The backend](./guides/backend.md): tables, rules, the moderation receiver, deploying
 - [Schema change loop](./guides/schema-change-loop.md): adding a table, with RLS
 - [Typed models](./guides/typed-models.md): how the Dart models are made

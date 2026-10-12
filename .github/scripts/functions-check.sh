@@ -10,10 +10,12 @@
 # Environment:
 #   SUPABASE   the CLI to run; default `supabase`
 #   FAKE_PLATFORM_PORT   default 8799
+#   DEVTOOLS   how to run devtools; default `npx --yes @devdogsuga/devtools@next`
 set -euo pipefail
 
 supabase=${SUPABASE:-supabase}
 port=${FAKE_PLATFORM_PORT:-8799}
+devtools=${DEVTOOLS:-npx --yes @devdogsuga/devtools@next}
 secret="whsec_$(head -c 24 /dev/urandom | base64 | tr -d '=+/\n')"
 client_id="dogpack-ci-$(head -c 4 /dev/urandom | od -An -tx1 | tr -d ' \n')"
 env_file=$(mktemp)
@@ -51,3 +53,10 @@ cd supabase/functions/_e2e
 PLATFORM_MODERATION_SECRET=$secret DEVDOGS_OAUTH_CLIENT_ID=$client_id FAKE_PLATFORM_PORT=$port \
   API_URL=$API_URL SECRET_KEY=$SECRET_KEY PUBLISHABLE_KEY=$PUBLISHABLE_KEY DB_URL=$DB_URL \
   deno test -A --no-lock functions_test.ts
+
+# The platform's own conformance sequence (signed, replayed, stale, restored)
+# against the function the way a deployed platform would reach it.
+cd - >/dev/null
+echo "--- devtools moderation samples ---"
+# shellcheck disable=SC2086
+$devtools moderation samples --to "$API_URL/functions/v1/platform-moderation" --secret "$secret"

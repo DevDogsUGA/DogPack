@@ -43,6 +43,8 @@ jobs:
       # compiled into the binary, so it holds public values only (Q27).
       - name: .env.example holds public values only
         run: node .github/scripts/check-env-example.mjs
+      - name: The vendored moderation protocol matches its source
+        run: node .github/scripts/check-vendored.mjs
       - name: The check scripts test themselves
         run: node --test .github/scripts/*.test.mjs
       - name: The shell scripts parse

@@ -78,3 +78,15 @@ test("the Markdown link check flags a missing file and a missing heading", () =>
   writeFileSync(join(dir, "README.md"), "[bad](docs/a.md#no-such-heading)\n");
   assert.equal(run("check-docs.mjs", [], dir).status, 1);
 });
+
+// check-vendored.mjs: the two transformations it allows.
+import { split, forDeno } from "./check-vendored.mjs";
+
+test("check-vendored reads the pinned commit and drops the header", () => {
+  const copy = "// VENDORED from x (DevDogsUGA 7ce11faa, a.ts).\n// more\ncode();\n";
+  assert.deepEqual(split(copy), { sha: "7ce11faa", body: "code();\n" });
+});
+
+test("check-vendored writes relative .js specifiers as .ts and nothing else", () => {
+  assert.equal(forDeno('import { a } from "./x.js";\nimport z from "zod";'), 'import { a } from "./x.ts";\nimport z from "zod";');
+});
