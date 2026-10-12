@@ -2,7 +2,9 @@
 -- quarantined one ("hidden from everyone but its author"). Everyone else sees
 -- it unless it is quarantined, its host is suspended or banned, or either side
 -- blocked the other; then a member who joined keeps seeing it (including after
--- a cancel), and a member enrolled in its course sees it while it is upcoming.
+-- a cancel), and a member enrolled in its course sees it while it is upcoming,
+-- provided they finished onboarding (the same marker joining requires, so
+-- courses added under the one-time onboarding exception expose no sessions).
 create function private.session_visible(p_viewer uuid, p_session dogpack.sessions)
 returns boolean
 language plpgsql
@@ -29,6 +31,7 @@ begin
   end if;
   return p_session."status" = 'scheduled'
     and p_session."endsAt" > now()
+    and exists (select 1 from private.onboarded_users o where o."userId" = p_viewer)
     and private.is_enrolled(p_viewer, p_session."term", p_session."course");
 end;
 $$;

@@ -37,7 +37,7 @@ insert into dogpack.enrollments ("userId", "term", "course") values
   ('00000000-0000-4000-8000-0000000000e4', 202808, 'ARTS 1100'),
   ('00000000-0000-4000-8000-0000000000e5', 202808, 'CSCI 1301');
 
-select plan(41);
+select plan(44);
 
 -- Creating a session.
 select tests.as_user('00000000-0000-4000-8000-0000000000e1');
@@ -63,6 +63,16 @@ select throws_ok($$insert into dogpack.sessions ("term", "course", "title", "loc
   'PT403', 'onboarding_required', 'a member who has not finished onboarding cannot host');
 reset role;
 
+-- Not onboarded: the session is not discoverable and cannot be joined, even
+-- though they are enrolled in the course (a late course added under the
+-- onboarding exception must not open sessions).
+select tests.as_user('00000000-0000-4000-8000-0000000000e5');
+select is((select count(*)::int from dogpack.sessions), 0, 'a member who has not finished onboarding does not see the session');
+select throws_ok($$insert into dogpack.session_members ("sessionId") values ('11111111-1111-4111-8111-111111111111')$$,
+  'PT403', 'onboarding_required', 'a member who has not finished onboarding cannot join');
+reset role;
+select is((select count(*)::int from dogpack.session_members where "userId" = '00000000-0000-4000-8000-0000000000e5'), 0, 'and no membership row exists');
+
 -- Who sees it.
 select tests.as_user('00000000-0000-4000-8000-0000000000e2');
 select is((select count(*)::int from dogpack.sessions), 1, 'a classmate sees the session');
@@ -78,7 +88,7 @@ select tests.as_user('00000000-0000-4000-8000-0000000000e2');
 insert into dogpack.session_members ("sessionId") values ('11111111-1111-4111-8111-111111111111');
 select pass('the first classmate joins');
 select throws_ok($$insert into dogpack.session_members ("sessionId") values ('11111111-1111-4111-8111-111111111111')$$, '23505', null, 'joining twice is a duplicate key');
-select throws_ok($$insert into dogpack.session_members ("sessionId", "userId") values ('11111111-1111-4111-8111-111111111111', '00000000-0000-4000-8000-0000000000e5')$$, '42501', null, 'a member cannot enrol another member in a session');
+select throws_ok($$insert into dogpack.session_members ("sessionId", "userId") values ('11111111-1111-4111-8111-111111111111', '00000000-0000-4000-8000-0000000000e3')$$, '42501', null, 'a member cannot enrol another member in a session');
 reset role;
 select tests.as_user('00000000-0000-4000-8000-0000000000e4');
 select throws_ok($$insert into dogpack.session_members ("sessionId") values ('11111111-1111-4111-8111-111111111111')$$, 'PT403', 'not_enrolled', 'a member of another course cannot join');

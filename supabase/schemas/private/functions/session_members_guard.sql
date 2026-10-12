@@ -3,6 +3,11 @@
 -- raises `session_full` (PT409) when the host plus the members fill capacity.
 -- The host counts as a seat, which is why the test is `1 + count >= capacity`.
 --
+-- Joining needs finished onboarding (a private.onboarded_users row, the marker
+-- enrollments_guard reads for the add/drop exception). Without it a member could
+-- add a course after the deadline as the one-time initial enrollment and then
+-- join its sessions, so the exception would never expire.
+--
 -- It is SECURITY DEFINER because locking a row for update needs the update
 -- policy, which only the host passes.
 create function private.session_members_guard()
@@ -15,6 +20,10 @@ declare
   v_session dogpack.sessions%rowtype;
   v_taken integer;
 begin
+  if not exists (select 1 from private.onboarded_users o where o."userId" = new."userId") then
+    raise exception 'onboarding_required' using errcode = 'PT403';
+  end if;
+
   select * into v_session from dogpack.sessions s where s."id" = new."sessionId" for update;
 
   -- A session the joiner could not see is a session that does not exist.
