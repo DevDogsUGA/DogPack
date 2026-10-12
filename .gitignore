@@ -24,3 +24,6 @@ lib/generated/
 supabase/migrations/
 supabase/.temp/
 supabase/.branches/
+
+# devtools records which schema hash lib/generated was built from
+.devtools/

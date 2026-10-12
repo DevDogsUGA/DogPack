@@ -64,6 +64,22 @@ fi
 # 2. The RLS suite.
 "$supabase" test db
 
+# 2a. Every table has a service_role grant. The generator reads the API spec as
+# service_role, so a table without one gets no Dart model and nothing says so.
+project_id=$(sed -n 's/^project_id *= *"\(.*\)"/\1/p' supabase/config.toml | head -n1)
+ungranted=$(docker exec -i "supabase_db_${project_id}" psql -U postgres -At -v ON_ERROR_STOP=1 -c "
+  select n.nspname || '.' || c.relname
+  from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  where c.relkind in ('r', 'p') and n.nspname = 'dogpack'
+    and not has_table_privilege('service_role', c.oid, 'SELECT')
+  order by 1")
+if [ -n "$ungranted" ]; then
+  echo "These tables have no service_role grant, so no Dart model is generated for them:" >&2
+  echo "$ungranted" >&2
+  echo "Add: grant select, insert, update, delete on table <table> to service_role;  (docs/guides/typed-models.md)" >&2
+  exit 1
+fi
+
 # 2b. The dev data (`devtools dev-data`) runs against the schema, twice: a
 # rename or a new guard in the schema breaks it, and a second run must not pile
 # up rows. It runs in the transaction devtools wraps it in.
