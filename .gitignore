@@ -4,6 +4,16 @@
 .flutter-plugins-dependencies
 build/
 .packages
-pubspec.lock
-# Generated Dart models (regenerated via `pnpm ... generate-types`)
+# pubspec.lock is committed: the generated-types hash covers the supadart
+# version it resolves, so every checkout must resolve the same one.
+
+# Generated Dart models (never committed; `devtools db types` or CI makes them)
 lib/generated/
+
+# Local configuration. `.env` is public-only; `.env.tooling` holds secrets.
+.env
+.env.tooling
+
+# IDE
+*.iml
+.idea/

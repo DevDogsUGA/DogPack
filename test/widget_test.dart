@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:study_group_finder/main.dart';
+import 'package:dogpack/main.dart';
 
 void main() {
   testWidgets('renders the placeholder home screen', (tester) async {
