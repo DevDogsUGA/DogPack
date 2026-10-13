@@ -143,7 +143,10 @@ jobs:
         run: |
           set -euo pipefail
           deno test -A --no-lock supabase/functions/_shared
-          for fn in enroll platform-moderation report; do deno check --no-lock "supabase/functions/$fn/index.ts"; done
+          # From each function's own folder, so Deno reads its deno.json rather than
+          # the repo root's package.json (which would make it look for npm packages in
+          # a node_modules directory that does not exist).
+          for fn in enroll platform-moderation report; do (cd "supabase/functions/$fn" && deno check --no-lock index.ts); done
       - name: Deploy the functions, then set their secrets
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

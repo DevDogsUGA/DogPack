@@ -154,6 +154,9 @@ jobs:
       - uses: ./.github/actions/setup-devtools
       - name: Unit tests
         run: deno test -A --no-lock supabase/functions/_shared
+      # The same type-check the deploy runs, so a break shows up on the PR.
+      - name: The functions type-check
+        run: for fn in enroll platform-moderation report; do (cd "supabase/functions/$fn" && deno check --no-lock index.ts); done
       - name: Start the stack
         run: bash .github/scripts/db-stack.sh up
       - name: The functions against the stack
