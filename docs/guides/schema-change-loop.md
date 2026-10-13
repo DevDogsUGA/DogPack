@@ -35,7 +35,7 @@ should say.
 ## 2. Apply it to your own database and regenerate the models
 
 ```bash
-npx @devdogsuga/devtools@next db sync
+pnpm devtools db sync
 ```
 
 `db sync` makes your development database match the tree. It never resets your

@@ -121,6 +121,7 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup-flutter
       - uses: ./.github/actions/setup-supabase
+      - uses: ./.github/actions/setup-devtools
       - run: flutter pub get
       - name: Apply, test and generate
         env:
@@ -150,6 +151,7 @@ jobs:
         with:
           deno-version: v2.x
       - uses: ./.github/actions/setup-supabase
+      - uses: ./.github/actions/setup-devtools
       - name: Unit tests
         run: deno test -A --no-lock supabase/functions/_shared
       - name: Start the stack

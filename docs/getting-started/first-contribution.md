@@ -12,12 +12,14 @@ anything that talks to the database.
   its engine artifacts on first use, and `devtools setup` fails with
   `sky_engine ... doesn't exist` until it has), and an Android emulator or a phone. iPhone users need a
   Mac to run the app from source.
+- [Node.js](https://nodejs.org) 22.12 or newer. The repository pins its pnpm, so
+  `corepack enable` (once) gives you the right one; `pnpm --version` should work.
 - Git, and a fork of this repository if you are not on the DevDogs team.
 
 ## Set up
 
 ```bash
-npx @devdogsuga/devtools@next setup
+pnpm devtools setup
 ```
 
 This writes `.env` from [`.env.example`](../../.env.example) with your own
@@ -26,6 +28,11 @@ the schema, fetches the generated models and registers "Sign in with DevDogs" on
 your project. `.env` holds public values only: it is compiled into the app.
 Secrets (the database URL, the secret key) go to `.env.tooling`, which the app
 never reads.
+
+`pnpm devtools` runs the DevDogs toolkit through `pnpm dlx`: there is nothing to
+install, and it fetches the latest release each time. To run it somewhere that is
+not a DogPack checkout, use the same thing spelled out:
+`pnpm dlx @devdogsuga/devtools@next setup`.
 
 ## Run it
 
@@ -46,7 +53,7 @@ The app opens on **Sign in with DevDogs**. Sign in once, then fill your database
 with believable classmates and sessions:
 
 ```bash
-npx @devdogsuga/devtools@next dev-data
+pnpm devtools dev-data
 ```
 
 It runs [`supabase/dev-data.sql`](../../supabase/dev-data.sql) as the member who

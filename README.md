@@ -18,6 +18,7 @@ the features arrive milestone by milestone (below).
 1. Read [Your first contribution](docs/getting-started/first-contribution.md).
 2. Pick an issue labelled [`good first issue`](https://github.com/DevDogsUGA/DogPack/labels/good%20first%20issue).
    Each takes under an hour, names the file it touches and states how to check it.
+   Setup is one command, `pnpm devtools setup` (the same one DogDays uses).
 3. Open a pull request. [CONTRIBUTING.md](CONTRIBUTING.md) has the rules; the DogPack
    leads review.
 

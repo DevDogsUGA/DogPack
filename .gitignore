@@ -27,3 +27,7 @@ supabase/.branches/
 
 # devtools records which schema hash lib/generated was built from
 .devtools/
+
+# `pnpm devtools` is a dlx run and installs nothing, but a stray install
+# must not be committed.
+node_modules/
