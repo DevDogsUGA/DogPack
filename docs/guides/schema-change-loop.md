@@ -41,6 +41,18 @@ pnpm devtools db sync
 `db sync` makes your development database match the tree. It never resets your
 database. It then regenerates the Dart models; see [Typed models](./typed-models.md).
 
+It also checks the database itself:
+
+- Anything the tree defines but the database lacks, such as a table you dropped by
+  hand, is recreated.
+- Anything you added that the tree doesn't define, such as an experimental table,
+  column or grant, is listed as a warning and left alone. `db sync --strict` fails
+  on these instead.
+- Anything defined differently in the database than in the tree, such as a changed
+  column type or function body, is refused and left unchanged. Fix the tree to match,
+  or start fresh with `pnpm devtools db sync --rebuild`, which wipes your local
+  database, and then `pnpm devtools dev-data`.
+
 ## 3. Test the policies
 
 Write a pgTAP file under `supabase/tests/` that asserts an **allow and a deny**
