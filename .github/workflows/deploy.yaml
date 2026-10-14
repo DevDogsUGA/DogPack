@@ -15,7 +15,8 @@ name: Deploy
 #                         excluded), then the schema, and when the Supabase
 #                         configuration changed the config push and the DevDogs
 #                         sign-in provider. A plan that drops or rewrites data
-#                         needs a second approval, of `production-destructive`.
+#                         is refused unless its pull request approved it
+#                         (allow-destructive).
 #   production-functions  the three Edge Functions and their secrets, after an
 #                         approval of `production` again (the database job's
 #                         approval covers the schema, not code that runs with
@@ -23,6 +24,13 @@ name: Deploy
 #                         It ends by checking what it deployed: the API serves the
 #                         schema, a signed-out visitor gets nothing, and each
 #                         function refuses what it must (verify-deploy.sh).
+#
+# ONE APPROVAL (opt-in). With the repository variable ONE_APPROVAL set to `true`
+# the two approvals above become one: `production-plan` reads the database,
+# `production-approval` is the single pause (the reviewed `production-approval`
+# environment), and the database apply and the functions then run in
+# `production`, which has no reviewers in that mode. Unset, both jobs ask as
+# before. DevDogsUGA's docs/operations/deploys/one-approval.md has the switch.
 #
 # Every approved job refuses an approver who wrote or queued the change, and a
 # candidate that is no longer the head of main.
@@ -44,11 +52,12 @@ permissions:
   contents: read
   actions: read
   pull-requests: read
+  issues: read
 
 env:
   # One commit of DevDogsUGA for the shared block AND its scripts. Bump both
   # lines below (and database.yaml, destructive-gate.yaml) together.
-  SHARED_REF: 90437662e61e3f8f147e4fe69a00d33912e2e3aa
+  SHARED_REF: 93c668bfb408edd2d48f442da2a46b36594da1cf
   SUPABASE_VERSION: 2.117.0
 
 jobs:
@@ -83,30 +92,94 @@ jobs:
 
   production-database:
     needs: resolve
-    uses: DevDogsUGA/DevDogsUGA/.github/workflows/deploy-database.yaml@90437662e61e3f8f147e4fe69a00d33912e2e3aa
+    if: vars.ONE_APPROVAL != 'true'
+    uses: DevDogsUGA/DevDogsUGA/.github/workflows/deploy-database.yaml@93c668bfb408edd2d48f442da2a46b36594da1cf
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      issues: read
+    with:
+      environment: production
+      plan_environment: preflight
+      require_read_only_planner: true
+      apply_config: ${{ needs.resolve.outputs.config == 'true' }}
+      register_provider: ${{ needs.resolve.outputs.config == 'true' }}
+      self_approval_gate: true
+      require_latest: true
+      supabase_version: 2.117.0
+      shared_ref: 93c668bfb408edd2d48f442da2a46b36594da1cf
+
+  # --- the one-approval flow (ONE_APPROVAL=true) ---
+  production-plan:
+    needs: resolve
+    if: vars.ONE_APPROVAL == 'true'
+    uses: DevDogsUGA/DevDogsUGA/.github/workflows/plan-database.yaml@93c668bfb408edd2d48f442da2a46b36594da1cf
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      issues: read
+    with:
+      environment: production
+      plan_environment: preflight
+      supabase_version: 2.117.0
+      shared_ref: 93c668bfb408edd2d48f442da2a46b36594da1cf
+
+  production-approval:
+    needs: [resolve, production-plan]
+    if: >-
+      !cancelled()
+      && vars.ONE_APPROVAL == 'true'
+      && needs.production-plan.result == 'success'
+    uses: DevDogsUGA/DevDogsUGA/.github/workflows/approve-production.yaml@93c668bfb408edd2d48f442da2a46b36594da1cf
     secrets: inherit
     permissions:
       contents: read
       actions: read
       pull-requests: read
     with:
+      approval_environment: production-approval
+      plan_environment_name: production
+      shared_ref: 93c668bfb408edd2d48f442da2a46b36594da1cf
+      notes: |
+        - Supabase configuration push and sign-in provider registration: ${{ needs.resolve.outputs.config == 'true' && 'yes' || 'skipped (config.toml did not change)' }}
+        - Edge Functions `enroll`, `platform-moderation` and `report`, and their secrets: deploy, then the verify checks
+        - Order: schema and configuration, then the functions.
+
+  production-database-apply:
+    needs: [resolve, production-plan, production-approval]
+    if: >-
+      !cancelled()
+      && vars.ONE_APPROVAL == 'true'
+      && needs.production-approval.result == 'success'
+    uses: DevDogsUGA/DevDogsUGA/.github/workflows/apply-database.yaml@93c668bfb408edd2d48f442da2a46b36594da1cf
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      issues: read
+    with:
       environment: production
-      plan_environment: preflight
-      require_read_only_planner: true
-      destructive_environment: production-destructive
+      approval_environment: production-approval
+      pending: ${{ needs.production-plan.outputs.pending }}
+      migrations_hash: ${{ needs.production-plan.outputs.migrations_hash }}
+      schema_hash: ${{ needs.production-plan.outputs.schema_hash }}
+      schema_empty: ${{ needs.production-plan.outputs.schema_empty }}
       apply_config: ${{ needs.resolve.outputs.config == 'true' }}
       register_provider: ${{ needs.resolve.outputs.config == 'true' }}
-      self_approval_gate: true
-      require_latest: true
       supabase_version: 2.117.0
-      shared_ref: 90437662e61e3f8f147e4fe69a00d33912e2e3aa
+      shared_ref: 93c668bfb408edd2d48f442da2a46b36594da1cf
 
   production-functions:
-    needs: production-database
+    needs: [production-database, production-database-apply]
     if: >-
       !cancelled()
       && vars.DOGPACK_DEPLOYS_PRODUCTION == 'true'
-      && needs.production-database.result == 'success'
+      && (needs.production-database.result == 'success' || needs.production-database-apply.result == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
@@ -124,7 +197,7 @@ jobs:
         run: >-
           node .shared/.github/scripts/approval-gate.mjs
           --repo "$GITHUB_REPOSITORY" --run-id "$GITHUB_RUN_ID" --sha "$GITHUB_SHA"
-          --environment production
+          --environment "${{ vars.ONE_APPROVAL == 'true' && 'production-approval' || 'production' }}"
       - name: Refuse an approved candidate that is no longer the head
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
