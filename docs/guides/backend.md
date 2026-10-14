@@ -61,8 +61,11 @@ faked, then runs `devtools moderation samples` against `platform-moderation`.
 
 DogPack has one project and no staging one, so `deploy.yaml` is production only.
 It stays off until the repository variable `DOGPACK_DEPLOYS_PRODUCTION` is `true`.
-Each job needs a `devops` approval of the `production` environment; a plan that
-drops data also needs `production-destructive`. The `production` environment
+Each job needs a `devops` approval of the `production` environment (once per
+deploy when `ONE_APPROVAL` is on). A plan that drops data is approved on its
+pull request instead: a `devops` member reads the `db-check` summary and applies
+the `allow-destructive` label, and the deploy refuses a destructive plan no
+labelled pull request showed. The `production` environment
 holds:
 
 | Kind | Name | What |
