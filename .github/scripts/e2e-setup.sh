@@ -29,6 +29,9 @@ devtools() {
 
 step() { printf '\n==> %s\n' "$*"; }
 
+step "flutter doctor (first use downloads the engine artifacts; setup needs them)"
+flutter doctor || true
+
 step "pnpm install"
 pnpm install --frozen-lockfile
 
