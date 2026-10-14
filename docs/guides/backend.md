@@ -73,5 +73,9 @@ holds:
 | secret | `DEVDOGS_OAUTH_CLIENT_ID`, `DEVDOGS_OAUTH_CLIENT_SECRET` | The production OAuth client DogPack signs in with. |
 | secret | `PLATFORM_MODERATION_SECRET` | The `whsec_` secret the platform shows once when the app is registered in the console under Apps Outside the Platform (or rotated in `/tools/oauth`). |
 
+Once DogPack's Bitwarden projects (`dogpack-preflight`, `dogpack-production`) are provisioned, set
+these with `backstage env push --repo dogpack --target production` from a Backstage clone rather
+than `gh secret set`, and check them with `backstage env audit --repo dogpack --target production`.
+
 The `preflight` environment holds `DB_URL` for the read-only `migration_planner`
 role (`.github/scripts/planner-role.sql`, already run once on the production project).

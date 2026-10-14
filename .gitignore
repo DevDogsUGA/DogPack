@@ -12,6 +12,8 @@ lib/generated/
 
 # Local configuration. `.env` is public-only; `.env.tooling` holds secrets.
 .env
+.env.*
+!.env.example
 .env.tooling
 
 # IDE
