@@ -57,7 +57,7 @@ permissions:
 env:
   # One commit of DevDogsUGA for the shared block AND its scripts. Bump both
   # lines below (and database.yaml, destructive-gate.yaml) together.
-  SHARED_REF: 65a9377309e8bab39761d4d7d6756729c9e9de02
+  SHARED_REF: 9ec22463ce5f5a6be864a4ee957522daac5f8e3c
   SUPABASE_VERSION: 2.117.0
 
 jobs:
@@ -102,7 +102,7 @@ jobs:
   production-database:
     needs: resolve
     if: vars.ONE_APPROVAL != 'true'
-    uses: DevDogsUGA/DevDogsUGA/.github/workflows/deploy-database.yaml@65a9377309e8bab39761d4d7d6756729c9e9de02
+    uses: DevDogsUGA/DevDogsUGA/.github/workflows/deploy-database.yaml@9ec22463ce5f5a6be864a4ee957522daac5f8e3c
     secrets: inherit
     permissions:
       contents: read
@@ -118,13 +118,13 @@ jobs:
       self_approval_gate: true
       require_latest: true
       supabase_version: 2.117.0
-      shared_ref: 65a9377309e8bab39761d4d7d6756729c9e9de02
+      shared_ref: 9ec22463ce5f5a6be864a4ee957522daac5f8e3c
 
   # --- the one-approval flow (ONE_APPROVAL=true) ---
   production-plan:
     needs: resolve
     if: vars.ONE_APPROVAL == 'true'
-    uses: DevDogsUGA/DevDogsUGA/.github/workflows/plan-database.yaml@65a9377309e8bab39761d4d7d6756729c9e9de02
+    uses: DevDogsUGA/DevDogsUGA/.github/workflows/plan-database.yaml@9ec22463ce5f5a6be864a4ee957522daac5f8e3c
     secrets: inherit
     permissions:
       contents: read
@@ -135,7 +135,7 @@ jobs:
       environment: production
       plan_environment: preflight
       supabase_version: 2.117.0
-      shared_ref: 65a9377309e8bab39761d4d7d6756729c9e9de02
+      shared_ref: 9ec22463ce5f5a6be864a4ee957522daac5f8e3c
 
   production-approval:
     needs: [resolve, production-plan]
@@ -143,7 +143,7 @@ jobs:
       !cancelled()
       && vars.ONE_APPROVAL == 'true'
       && needs.production-plan.result == 'success'
-    uses: DevDogsUGA/DevDogsUGA/.github/workflows/approve-production.yaml@65a9377309e8bab39761d4d7d6756729c9e9de02
+    uses: DevDogsUGA/DevDogsUGA/.github/workflows/approve-production.yaml@9ec22463ce5f5a6be864a4ee957522daac5f8e3c
     secrets: inherit
     permissions:
       contents: read
@@ -152,7 +152,7 @@ jobs:
     with:
       approval_environment: production-approval
       plan_environment_name: production
-      shared_ref: 65a9377309e8bab39761d4d7d6756729c9e9de02
+      shared_ref: 9ec22463ce5f5a6be864a4ee957522daac5f8e3c
       notes: |
         - Supabase configuration push and sign-in provider registration: ${{ needs.resolve.outputs.config == 'true' && 'yes' || 'skipped (config.toml did not change)' }}
         - Edge Functions `enroll`, `platform-moderation` and `report`, and their secrets: deploy, then the verify checks
@@ -164,7 +164,7 @@ jobs:
       !cancelled()
       && vars.ONE_APPROVAL == 'true'
       && needs.production-approval.result == 'success'
-    uses: DevDogsUGA/DevDogsUGA/.github/workflows/apply-database.yaml@65a9377309e8bab39761d4d7d6756729c9e9de02
+    uses: DevDogsUGA/DevDogsUGA/.github/workflows/apply-database.yaml@9ec22463ce5f5a6be864a4ee957522daac5f8e3c
     secrets: inherit
     permissions:
       contents: read
@@ -181,7 +181,7 @@ jobs:
       apply_config: ${{ needs.resolve.outputs.config == 'true' }}
       register_provider: ${{ needs.resolve.outputs.config == 'true' }}
       supabase_version: 2.117.0
-      shared_ref: 65a9377309e8bab39761d4d7d6756729c9e9de02
+      shared_ref: 9ec22463ce5f5a6be864a4ee957522daac5f8e3c
 
   production-functions:
     needs: [production-database, production-database-apply]
