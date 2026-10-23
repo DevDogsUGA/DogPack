@@ -232,6 +232,7 @@ Deno.test({ name: "platform-moderation: signed, idempotent, order-safe, and a hi
   assertEquals((await bob.client.schema("dogpack").from("sessions").select("id").eq("id", sessionId)).data!.length, 1);
 }});
 
+const unknownDeleted = crypto.randomUUID();
 Deno.test({ name: "platform-moderation: user.delete removes the local user, idempotently", ...loose, fn: async () => {
   const del = { type: "user.delete", timestamp: new Date(Date.now() + 120_000).toISOString(), data: { userId: cara.platformId, reason: null, reportId: null } };
   assertEquals((await deliver(del, { id: `msg_del_${run}` })).json.outcome, "applied");
@@ -241,7 +242,7 @@ Deno.test({ name: "platform-moderation: user.delete removes the local user, idem
   assertEquals(again.status, 200);
   assertEquals(again.json.outcome, "duplicate");
   // A different message for an id DogPack never had.
-  const unknown = { ...del, data: { ...del.data, userId: crypto.randomUUID() } };
+  const unknown = { ...del, data: { ...del.data, userId: unknownDeleted } };
   assertEquals((await deliver(unknown, { id: `msg_del_unknown_${run}` })).status, 200);
 }});
 
@@ -250,8 +251,8 @@ Deno.test({ name: "cleanup", ...loose, fn: async () => {
     await admin.auth.admin.deleteUser(m.id);
   }
   await sql`delete from moderation.events where id like ${"%" + run}`;
-  await sql`delete from moderation.user_states where "platformUserId" in ${sql([alice.platformId, bob.platformId, cara.platformId])}`;
-  await sql`delete from moderation.decisions where "itemKey" like 'content:session:%' or "itemKey" like ${"user:" + alice.platformId}`;
+  await sql`delete from moderation.user_states where "platformUserId" in ${sql([alice.platformId, bob.platformId, cara.platformId, unknownDeleted])}`;
+  await sql`delete from moderation.decisions where "itemKey" like 'content:session:%' or "itemKey" in ${sql(["user:" + alice.platformId, "user:" + cara.platformId, "user:" + unknownDeleted])}`;
   await sql.end();
   await platform.close();
 }});

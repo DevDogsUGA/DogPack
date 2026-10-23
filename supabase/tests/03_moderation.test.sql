@@ -31,7 +31,7 @@ insert into dogpack.enrollments ("userId", "term", "course") values
 insert into dogpack.sessions ("id", "hostId", "term", "course", "title", "location", "startsAt", "endsAt", "capacity") values
   ('33333333-3333-4333-8333-333333333333', '00000000-0000-4000-8000-0000000000f1', 202808, 'CSCI 1301', 'Loops review', 'MLC', now() + interval '1 day', now() + interval '1 day 2 hours', 4);
 
-select plan(58);
+select plan(59);
 
 -- The function is for the service role only.
 select tests.as_user('00000000-0000-4000-8000-0000000000f2');
@@ -118,6 +118,7 @@ select throws_ok($$insert into dogpack.enrollments ("userId", "term", "course") 
 select is(
   moderation.apply_event('msg_7', '{"type":"user.restore","timestamp":"2027-01-03T09:00:00Z","data":{"userId":"aaaaaaaa-0000-4000-8000-000000000002","reason":null,"reportId":null}}'::jsonb),
   'stale', 'a user.restore older than the ban is stale');
+select is((select "payload" #>> '{data,reason}' from moderation.events where "id" = 'msg_12'), null, 'and the stored message keeps no reason either');
 select isnt((select banned_until from auth.users where id = '00000000-0000-4000-8000-0000000000f2'), null, 'and the ban stands');
 select is(
   moderation.apply_event('msg_8', '{"type":"user.restore","timestamp":"2027-01-04T09:00:00Z","data":{"userId":"aaaaaaaa-0000-4000-8000-000000000002","reason":null,"reportId":null}}'::jsonb),

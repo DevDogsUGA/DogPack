@@ -17,7 +17,7 @@
 import postgres from "npm:postgres@3.4.9";
 import { parseMessage } from "../_shared/moderation/messages.ts";
 import { verifyMessage } from "../_shared/moderation/signing.ts";
-import { parseUserDelete } from "../_shared/moderation/user-delete.ts";
+import { parseUserDelete } from "../_shared/user-delete.ts";
 import { serviceClient } from "../_shared/auth.ts";
 import { json } from "../_shared/http.ts";
 
@@ -66,9 +66,10 @@ export async function handle(request: Request): Promise<Response> {
     // user.delete: apply_event locked the account out and recorded the id; the
     // auth user is removed here, through the admin API, and DogPack's foreign
     // keys cascade the rest. It runs on 'duplicate' too, so a retry after a
-    // failed admin call finishes the job. A 'stale' message changes nothing.
-    // An unknown user, or one already deleted, is a success.
-    if (deletion && outcome !== "stale") {
+    // failed admin call finishes the job. Deletion is final, so it runs
+    // whatever the ordering outcome (even 'stale'). An unknown user, or one
+    // already deleted, is a success.
+    if (deletion) {
       await deleteLocalUser(deletion.data.userId);
     }
     return json(200, { status: 200, outcome });

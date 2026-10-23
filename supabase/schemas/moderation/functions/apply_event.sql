@@ -70,7 +70,9 @@ begin
   -- 1. Idempotent. The id is recorded before the ordering check, so a stale
   -- message that is replayed is a duplicate, not stale twice.
   insert into moderation.events ("id", "type", "itemKey", "decidedAt", "payload")
-  values (p_id, v_type, v_key, v_decided, p_message)
+  values (p_id, v_type, v_key, v_decided,
+          -- A deleted account keeps no free text about the person, here either.
+          case when v_type = 'user.delete' then jsonb_set(p_message, '{data,reason}', 'null'::jsonb) else p_message end)
   on conflict ("id") do nothing;
   get diagnostics v_inserted = row_count;
   if v_inserted = 0 then

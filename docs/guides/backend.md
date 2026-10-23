@@ -52,7 +52,7 @@ Rules worth knowing, each asserted by a pgTAP file under `supabase/tests/`:
   unknown users answer 2xx, and a retry after a failed admin call finishes the
   deletion. `moderation.user_states` keeps only the platform user id with state
   `deleted`. Until `_shared/moderation` is re-vendored from a commit that carries
-  the type (DevDogsUGA #215), `_shared/moderation/user-delete.ts` accepts it locally.
+  the type (DevDogsUGA #215), `_shared/user-delete.ts` accepts it locally.
 - `_shared/moderation/` is a vendored copy of `@devdogsuga/sdk/moderation`; see its
   README for why and how it is kept in step.
 
