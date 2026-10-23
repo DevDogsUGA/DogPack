@@ -1,4 +1,4 @@
--- Platform users who are suspended or banned, keyed by their DEVDOGS user id
+-- Platform users who are suspended, banned or deleted, keyed by their DEVDOGS user id
 -- (the subject of their custom:devdogsuga identity), not by DogPack's own
 -- auth id. A ban can arrive before the person ever signs in to DogPack, and
 -- must still bite when they do; `private.is_restricted` joins the two ids at
