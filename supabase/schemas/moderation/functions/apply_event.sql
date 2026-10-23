@@ -18,6 +18,14 @@
 --   user.suspend / user.ban         the user cannot sign in and every policy
 --                                   treats them as restricted
 --   user.restore                    lifts both
+--   user.delete                     the platform account is gone (DevDogs
+--                                   account deletion). Here: the same lockout
+--                                   as a ban, the state recorded as 'deleted'
+--                                   with the reason dropped. The auth user
+--                                   itself is deleted by the Edge Function
+--                                   through the admin API right after this
+--                                   commits, and DogPack's own foreign keys
+--                                   (all on delete cascade) remove the rest.
 --
 -- A message about content or a user DogPack has no row for is recorded and
 -- answers 'applied': there is nothing to hide, and a later row would not be
@@ -45,7 +53,7 @@ begin
     raise exception 'missing message id';
   end if;
   if v_type not in ('content.hide', 'content.remove', 'content.restore',
-                    'user.suspend', 'user.ban', 'user.restore') then
+                    'user.suspend', 'user.ban', 'user.restore', 'user.delete') then
     raise exception 'unknown message type %', v_type;
   end if;
   if v_decided is null then
@@ -103,8 +111,10 @@ begin
     insert into moderation.user_states ("platformUserId", "state", "reason", "decidedAt")
     values (
       v_platform_user,
-      case v_type when 'user.suspend' then 'suspended' when 'user.ban' then 'banned' else 'active' end,
-      v_data ->> 'reason',
+      case v_type when 'user.suspend' then 'suspended' when 'user.ban' then 'banned'
+                  when 'user.delete' then 'deleted' else 'active' end,
+      -- A deleted account keeps no free text about the person.
+      case when v_type = 'user.delete' then null else v_data ->> 'reason' end,
       v_decided
     )
     on conflict ("platformUserId") do update

@@ -232,6 +232,19 @@ Deno.test({ name: "platform-moderation: signed, idempotent, order-safe, and a hi
   assertEquals((await bob.client.schema("dogpack").from("sessions").select("id").eq("id", sessionId)).data!.length, 1);
 }});
 
+Deno.test({ name: "platform-moderation: user.delete removes the local user, idempotently", ...loose, fn: async () => {
+  const del = { type: "user.delete", timestamp: new Date(Date.now() + 120_000).toISOString(), data: { userId: cara.platformId, reason: null, reportId: null } };
+  assertEquals((await deliver(del, { id: `msg_del_${run}` })).json.outcome, "applied");
+  assertNotEquals((await admin.auth.admin.getUserById(cara.id)).error, null, "the auth user is gone");
+  assertEquals((await sql`select 1 from dogpack.profiles where "userId" = ${cara.id}`).length, 0);
+  const again = await deliver(del, { id: `msg_del_${run}` });
+  assertEquals(again.status, 200);
+  assertEquals(again.json.outcome, "duplicate");
+  // A different message for an id DogPack never had.
+  const unknown = { ...del, data: { ...del.data, userId: crypto.randomUUID() } };
+  assertEquals((await deliver(unknown, { id: `msg_del_unknown_${run}` })).status, 200);
+}});
+
 Deno.test({ name: "cleanup", ...loose, fn: async () => {
   for (const m of [alice, bob, cara]) {
     await admin.auth.admin.deleteUser(m.id);
