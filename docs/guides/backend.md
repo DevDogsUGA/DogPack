@@ -50,7 +50,10 @@ Rules worth knowing, each asserted by a pgTAP file under `supabase/tests/`:
   enrollments, hosted sessions with their rosters, memberships, blocks in both
   directions and the onboarding marker all go; nothing blocks it. Repeats and
   unknown users answer 2xx, and a retry after a failed admin call finishes the
-  deletion. `moderation.user_states` keeps only the platform user id with state
+  deletion; a `stale` outcome (an older message than the last decision) still deletes, since the
+  account is gone either way. Earlier `user.ban`/`user.suspend` payloads for the same person stay
+  in `moderation.events` with their reasons (bans survive "delete my data"; best effort per the
+  decision). `moderation.user_states` keeps only the platform user id with state
   `deleted`. Until `_shared/moderation` is re-vendored from a commit that carries
   the type (DevDogsUGA #215), `_shared/user-delete.ts` accepts it locally.
 - `_shared/moderation/` is a vendored copy of `@devdogsuga/sdk/moderation`; see its

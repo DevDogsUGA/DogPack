@@ -79,7 +79,6 @@ export async function handle(request: Request): Promise<Response> {
   }
 }
 
-
 /**
  * Delete the DogPack auth user linked to a DevDogs identity, if there is one.
  * Their identity row is what links them, so once the user is gone a repeat

@@ -118,7 +118,6 @@ select throws_ok($$insert into dogpack.enrollments ("userId", "term", "course") 
 select is(
   moderation.apply_event('msg_7', '{"type":"user.restore","timestamp":"2027-01-03T09:00:00Z","data":{"userId":"aaaaaaaa-0000-4000-8000-000000000002","reason":null,"reportId":null}}'::jsonb),
   'stale', 'a user.restore older than the ban is stale');
-select is((select "payload" #>> '{data,reason}' from moderation.events where "id" = 'msg_12'), null, 'and the stored message keeps no reason either');
 select isnt((select banned_until from auth.users where id = '00000000-0000-4000-8000-0000000000f2'), null, 'and the ban stands');
 select is(
   moderation.apply_event('msg_8', '{"type":"user.restore","timestamp":"2027-01-04T09:00:00Z","data":{"userId":"aaaaaaaa-0000-4000-8000-000000000002","reason":null,"reportId":null}}'::jsonb),
@@ -168,6 +167,7 @@ insert into dogpack.blocks ("blockerId", "blockedId") values
 select is(
   moderation.apply_event('msg_12', '{"type":"user.delete","timestamp":"2027-01-07T09:00:00Z","data":{"userId":"aaaaaaaa-0000-4000-8000-000000000004","reason":"gone","reportId":null}}'::jsonb),
   'applied', 'a user.delete is applied');
+select is((select "payload" -> 'data' -> 'reason' from moderation.events where "id" = 'msg_12'), 'null'::jsonb, 'and the stored message keeps no reason either');
 select is((select state from moderation.user_states where "platformUserId" = 'aaaaaaaa-0000-4000-8000-000000000004'), 'deleted', 'the state is recorded as deleted');
 select is((select reason from moderation.user_states where "platformUserId" = 'aaaaaaaa-0000-4000-8000-000000000004'), null, 'with no free-text reason kept');
 select isnt((select banned_until from auth.users where id = '00000000-0000-4000-8000-0000000000f4'), null, 'and the account is locked out until the auth user is removed');

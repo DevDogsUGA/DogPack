@@ -9,7 +9,8 @@
 -- reason. It holds only the platform's own user id, which the platform has
 -- already deleted, and it keeps a late or replayed message about that id from
 -- being treated as a new person. The local auth user and everything DogPack
--- holds on it is removed by the platform-moderation function.
+-- holds on it is removed by the platform-moderation function. Earlier ban and
+-- suspend payloads in moderation.events keep their reasons (best effort).
 create table moderation.user_states (
   "platformUserId" uuid        primary key,
   "state"          text        not null,
