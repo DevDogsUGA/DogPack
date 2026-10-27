@@ -21,7 +21,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
   # Dart model generation from the Supabase schema (`supabase gen types` has no
   # Dart target). Run by `devtools db types` and by CI; see docs/guides/typed-models.md.
   supadart: ^2.1.0
