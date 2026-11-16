@@ -7,7 +7,7 @@
 | `lib/auth/` | `AuthController` (a `ChangeNotifier`, provided with `provider`) holds where the member stands: loading, signed out, needs onboarding, ready, or failed. `AuthGateway` is the seam to Supabase, so tests use a fake. |
 | `lib/screens/`, `lib/widgets/` | One file per screen. New screens go under `/` in the router so they sit behind the gate. |
 | `.env.example`, `.vscode/` | The app's public configuration, and the launch configuration that refuses to start with a secret in `.env`. |
-| `supabase/dev-data.sql` | Fake classmates and sessions for your own database: `npx @devdogsuga/devtools@next dev-data`. |
+| `supabase/dev-data.sql` | Fake classmates and sessions for your own database: `pnpm devtools dev-data`. |
 | `lib/generated/` | supadart's output, one Dart model per table. Git-ignored; never hand-edit it, regenerate. |
 | `android/`, `ios/` | The committed platform runners (`dev.dogpack`). There is no `web/`: the app does not target it. |
 | `test/` | Flutter tests: the controller, the gate and its routes, the config. |

@@ -8,8 +8,8 @@ one of two ways.
 ## Generate them from your database
 
 ```bash
-npx @devdogsuga/devtools@next db sync    # make your dev database match supabase/schemas/
-npx @devdogsuga/devtools@next db types   # run supadart against it
+pnpm devtools db sync    # make your dev database match supabase/schemas/
+pnpm devtools db types   # run supadart against it
 ```
 
 `db sync` regenerates the models after it changes your database. Under the hood
@@ -19,7 +19,7 @@ this is `dart run supadart`, which reads `supadart.yaml` (`output: lib/generated
 ## Download the ones CI built
 
 ```bash
-npx @devdogsuga/devtools@next db types --download
+pnpm devtools db types --download
 ```
 
 CI uploads a `dogpack-types-<hash>.tgz` asset to the rolling

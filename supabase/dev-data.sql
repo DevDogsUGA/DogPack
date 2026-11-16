@@ -1,6 +1,6 @@
 -- Fake study-group data for a development database. Run it with
 --
---   npx @devdogsuga/devtools@next dev-data
+--   pnpm devtools dev-data
 --
 -- after you have signed in to the app once. devtools runs this file in one
 -- transaction as the postgres role, on the local stack or your own project

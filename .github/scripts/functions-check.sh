@@ -10,12 +10,12 @@
 # Environment:
 #   SUPABASE   the CLI to run; default `supabase`
 #   FAKE_PLATFORM_PORT   default 8799
-#   DEVTOOLS   how to run devtools; default `npx --yes @devdogsuga/devtools@next`
+#   DEVTOOLS   how to run devtools; default `pnpm dlx @devdogsuga/devtools@next`
 set -euo pipefail
 
 supabase=${SUPABASE:-supabase}
 port=${FAKE_PLATFORM_PORT:-8799}
-devtools=${DEVTOOLS:-npx --yes @devdogsuga/devtools@next}
+devtools=${DEVTOOLS:-pnpm dlx @devdogsuga/devtools@next}
 secret="whsec_$(head -c 24 /dev/urandom | base64 | tr -d '=+/\n')"
 client_id="dogpack-ci-$(head -c 4 /dev/urandom | od -An -tx1 | tr -d ' \n')"
 env_file=$(mktemp)

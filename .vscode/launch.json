@@ -6,7 +6,7 @@
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
-      // The app's public configuration. Run `npx @devdogsuga/devtools@next setup`
+      // The app's public configuration. Run `pnpm devtools setup`
       // first; it writes .env from .env.example.
       "args": ["--dart-define-from-file=.env"],
       // Refuses to start when .env holds a secret key or a database URL: they

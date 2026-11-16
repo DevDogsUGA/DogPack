@@ -16,6 +16,13 @@ then pick an issue from the [milestones](https://github.com/DevDogsUGA/DogPack/m
 - Never put a secret in the repository, `.env.example` or a `--dart-define`.
   Anything compiled into the app can be read back out of it.
 
+## Tooling
+
+`pnpm devtools <command>` is the toolkit in every DevDogs product repository
+(`setup`, `doctor`, `db sync`, `db types`, `dev-data`). Outside a checkout, the
+one-off form is `pnpm dlx @devdogsuga/devtools@next <command>`. Use pnpm, not
+`npx`: the repository pins the pnpm version in `package.json`.
+
 ## Review
 
 Pull requests need one approval from the code owners in

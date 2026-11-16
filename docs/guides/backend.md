@@ -61,8 +61,11 @@ faked, then runs `devtools moderation samples` against `platform-moderation`.
 
 DogPack has one project and no staging one, so `deploy.yaml` is production only.
 It stays off until the repository variable `DOGPACK_DEPLOYS_PRODUCTION` is `true`.
-Each job needs a `devops` approval of the `production` environment; a plan that
-drops data also needs `production-destructive`. The `production` environment
+Each job needs a `devops` approval of the `production` environment (once per
+deploy when `ONE_APPROVAL` is on). A plan that drops data is approved on its
+pull request instead: a `devops` member reads the `db-check` summary and applies
+the `allow-destructive` label, and the deploy refuses a destructive plan no
+labelled pull request showed. The `production` environment
 holds:
 
 | Kind | Name | What |
@@ -72,6 +75,11 @@ holds:
 | secret | `DB_URL`, `SECRET_KEY`, `SUPABASE_ACCESS_TOKEN` | The project's credentials. |
 | secret | `DEVDOGS_OAUTH_CLIENT_ID`, `DEVDOGS_OAUTH_CLIENT_SECRET` | The production OAuth client DogPack signs in with. |
 | secret | `PLATFORM_MODERATION_SECRET` | The `whsec_` secret the platform shows once when the app is registered in the console under Apps Outside the Platform (or rotated in `/tools/oauth`). |
+
+Once DogPack's Bitwarden projects (`dogpack-preflight`, `dogpack-production`) are provisioned, set
+these with `pnpm backstage env push --repo dogpack --target production` from a DevDogsUGA checkout
+(its root script runs `@devdogsuga/backstage@next`) rather than `gh secret set`, and check them with
+`pnpm backstage env audit --repo dogpack --target production`.
 
 The `preflight` environment holds `DB_URL` for the read-only `migration_planner`
 role (`.github/scripts/planner-role.sql`, already run once on the production project).

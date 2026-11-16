@@ -1,0 +1,12 @@
+# This repository has no JavaScript dependencies: package.json exists so that
+# `pnpm devtools …` works here exactly as it does in DogDays. It is a
+# `pnpm dlx` run, so there is nothing to install; the lockfile is empty on purpose.
+
+# Dependencies published by DevDogs itself skip the release-age gate: holding
+# our own releases back only delays a fix.
+minimumReleaseAgeExclude:
+  - "@devdogsuga/*"
+
+# Zero resolves the `next` dist-tag on every run, so a publish reaches everyone
+# at once.
+dlxCacheMaxAge: 0

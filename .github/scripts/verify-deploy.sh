@@ -30,17 +30,19 @@ status() { # status <profile> <method> <path> [json]
 }
 refused() { case "$1" in 401 | 403) return 0 ;; *) return 1 ;; esac }
 
-# PostgREST needs a moment to reload its schema cache after a change. The root
-# of a profile is its OpenAPI document; `anon` has no access to the schema, so a
-# served schema answers 401/403 here, and an unserved one 406.
+# PostgREST needs a moment to reload its schema cache after a change. Probe a
+# table, not the root: the root is the OpenAPI document, which only a secret key
+# may read, so it answers 401 for every profile (served or not). For a table,
+# `anon` has no access to the schema, so a served schema answers 401/403 and an
+# unserved one 406.
 for attempt in 1 2 3 4 5 6; do
-  code=$(status dogpack GET '')
+  code=$(status dogpack GET 'enrollments?limit=0')
   if refused "$code" || [ "$code" = 200 ]; then break; fi
   echo "verify-deploy: the API answered $code, waiting (attempt $attempt)"
   sleep 10
 done
 refused "$code" || [ "$code" = 200 ] || fail "the API does not serve the dogpack schema ($code): $(head -c 300 "$body")"
-code=$(status not_a_schema GET '')
+code=$(status not_a_schema GET 'enrollments?limit=0')
 [ "$code" = 406 ] || fail "a schema that does not exist answered $code, not 406: the check above proves nothing"
 echo "ok - the API serves the dogpack schema"
 
@@ -57,7 +59,8 @@ done
 echo "ok - the member functions need a session"
 
 for schema in moderation private public; do
-  code=$(status "$schema" GET '')
+  # A table path, for the same reason as above: the root needs a secret key.
+  code=$(status "$schema" GET 'enrollments?limit=0')
   case "$code" in 406 | 404 | 400) ;; *) fail "the $schema schema answered $code; only dogpack should be served" ;; esac
 done
 echo "ok - moderation, private and public are not served schemas"
