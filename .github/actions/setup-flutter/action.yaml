@@ -6,17 +6,18 @@ runs:
   steps:
     # Not subosito/flutter-action: it calls `actions/cache@v5` internally, by
     # tag, and a repository that requires every action pinned to a full commit
-    # SHA fails the job before it runs a step. Clone the exact version declared
+    # SHA fails the job before it runs a step. Clone the lower-bound version declared
     # in pubspec.yaml instead.
     - name: Install Flutter from pubspec.yaml
       shell: bash
       run: |
         version="$(ruby -ryaml -e '
           version = YAML.load_file("pubspec.yaml").dig("environment", "flutter")
-          unless version.is_a?(String) && /\A[0-9]+\.[0-9]+\.[0-9]+\z/.match?(version)
-            abort "::error::pubspec.yaml environment.flutter must be an exact X.Y.Z version"
+          match = /\A(?:>=)?([0-9]+\.[0-9]+\.[0-9]+)\z/.match(version) if version.is_a?(String)
+          unless match
+            abort "::error::pubspec.yaml environment.flutter must be >=X.Y.Z or bare X.Y.Z"
           end
-          puts version
+          puts match[1]
         ')"
         git clone --depth 1 --branch "$version" https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
         echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
