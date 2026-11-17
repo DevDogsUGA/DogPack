@@ -31,7 +31,7 @@ insert into dogpack.enrollments ("userId", "term", "course") values
 insert into dogpack.sessions ("id", "hostId", "term", "course", "title", "location", "startsAt", "endsAt", "capacity") values
   ('33333333-3333-4333-8333-333333333333', '00000000-0000-4000-8000-0000000000f1', 202808, 'CSCI 1301', 'Loops review', 'MLC', now() + interval '1 day', now() + interval '1 day 2 hours', 4);
 
-select plan(44);
+select plan(59);
 
 -- The function is for the service role only.
 select tests.as_user('00000000-0000-4000-8000-0000000000f2');
@@ -147,6 +147,47 @@ insert into auth.users (id, email) values ('00000000-0000-4000-8000-0000000000f3
 insert into auth.identities (provider_id, user_id, identity_data, provider) values
   ('aaaaaaaa-0000-4000-8000-000000000003', '00000000-0000-4000-8000-0000000000f3', '{}', 'custom:devdogsuga');
 select is(private.is_restricted('00000000-0000-4000-8000-0000000000f3'), true, 'and they are restricted from their first session');
+
+-- Account deletion (user.delete): lock the account out, record 'deleted', and let
+-- the auth user's deletion (the Edge Function's admin API call, simulated here
+-- by a delete on auth.users) cascade through every DogPack table.
+insert into auth.users (id, email) values ('00000000-0000-4000-8000-0000000000f4', 'leaving@dogpack.devdogsuga.test');
+insert into auth.identities (provider_id, user_id, identity_data, provider) values
+  ('aaaaaaaa-0000-4000-8000-000000000004', '00000000-0000-4000-8000-0000000000f4', '{}', 'custom:devdogsuga');
+insert into dogpack.profiles ("userId", "displayName", "classYear", "major", "onboardedAt")
+  values ('00000000-0000-4000-8000-0000000000f4', 'Leaving', 'senior', 'CS', now());
+insert into dogpack.enrollments ("userId", "term", "course") values ('00000000-0000-4000-8000-0000000000f4', 202808, 'CSCI 1301');
+insert into dogpack.sessions ("id", "hostId", "term", "course", "title", "location", "startsAt", "endsAt", "capacity") values
+  ('66666666-6666-4666-8666-666666666666', '00000000-0000-4000-8000-0000000000f4', 202808, 'CSCI 1301', 'Leaving host', 'MLC', now() + interval '2 days', now() + interval '2 days 2 hours', 4);
+insert into dogpack.session_members ("sessionId", "userId") values ('66666666-6666-4666-8666-666666666666', '00000000-0000-4000-8000-0000000000f2');
+insert into dogpack.blocks ("blockerId", "blockedId") values
+  ('00000000-0000-4000-8000-0000000000f2', '00000000-0000-4000-8000-0000000000f4'),
+  ('00000000-0000-4000-8000-0000000000f4', '00000000-0000-4000-8000-0000000000f2');
+
+select is(
+  moderation.apply_event('msg_12', '{"type":"user.delete","timestamp":"2027-01-07T09:00:00Z","data":{"userId":"aaaaaaaa-0000-4000-8000-000000000004","reason":"gone","reportId":null}}'::jsonb),
+  'applied', 'a user.delete is applied');
+select is((select "payload" -> 'data' -> 'reason' from moderation.events where "id" = 'msg_12'), 'null'::jsonb, 'and the stored message keeps no reason either');
+select is((select state from moderation.user_states where "platformUserId" = 'aaaaaaaa-0000-4000-8000-000000000004'), 'deleted', 'the state is recorded as deleted');
+select is((select reason from moderation.user_states where "platformUserId" = 'aaaaaaaa-0000-4000-8000-000000000004'), null, 'with no free-text reason kept');
+select isnt((select banned_until from auth.users where id = '00000000-0000-4000-8000-0000000000f4'), null, 'and the account is locked out until the auth user is removed');
+
+-- The admin API's deleteUser. Nothing in DogPack may block it.
+delete from auth.users where id = '00000000-0000-4000-8000-0000000000f4';
+select is((select count(*)::int from dogpack.profiles where "userId" = '00000000-0000-4000-8000-0000000000f4'), 0, 'deleting the auth user removes the profile');
+select is((select count(*)::int from dogpack.enrollments where "userId" = '00000000-0000-4000-8000-0000000000f4'), 0, 'the enrollments');
+select is((select count(*)::int from dogpack.sessions where "hostId" = '00000000-0000-4000-8000-0000000000f4'), 0, 'the sessions they hosted');
+select is((select count(*)::int from dogpack.session_members where "sessionId" = '66666666-6666-4666-8666-666666666666'), 0, 'with their rosters');
+select is((select count(*)::int from dogpack.blocks where "blockerId" = '00000000-0000-4000-8000-0000000000f4' or "blockedId" = '00000000-0000-4000-8000-0000000000f4'), 0, 'blocks to and from them');
+select is((select count(*)::int from private.onboarded_users where "userId" = '00000000-0000-4000-8000-0000000000f4'), 0, 'and the onboarding marker');
+select is((select count(*)::int from auth.identities where user_id = '00000000-0000-4000-8000-0000000000f4'), 0, 'and their DevDogs identity');
+select is((select "displayName" from dogpack.profiles where "userId" = '00000000-0000-4000-8000-0000000000f2'), 'Back again', 'other members'' data is untouched');
+select is(
+  moderation.apply_event('msg_12', '{"type":"user.delete","timestamp":"2027-01-07T09:00:00Z","data":{"userId":"aaaaaaaa-0000-4000-8000-000000000004","reason":"gone","reportId":null}}'::jsonb),
+  'duplicate', 'a replayed user.delete is a duplicate');
+select is(
+  moderation.apply_event('msg_13', '{"type":"user.delete","timestamp":"2027-01-07T09:05:00Z","data":{"userId":"aaaaaaaa-0000-4000-8000-000000000099","reason":null,"reportId":null}}'::jsonb),
+  'applied', 'a user.delete for a platform user DogPack never had is acknowledged');
 
 -- Malformed messages are refused, and leave no trace.
 select throws_ok($$select moderation.apply_event('msg_11', '{"type":"content.explode","timestamp":"2027-01-06T09:00:00Z","data":{}}'::jsonb)$$, 'P0001', null, 'an unknown message type raises');
