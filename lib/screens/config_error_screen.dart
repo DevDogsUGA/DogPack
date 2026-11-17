@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Shown instead of a crash when the app was started without its `.env`.
 class ConfigErrorScreen extends StatelessWidget {

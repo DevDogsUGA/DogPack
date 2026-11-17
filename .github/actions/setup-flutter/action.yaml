@@ -1,17 +1,25 @@
 name: Set up Flutter
-description: Flutter (stable) on PATH, with the pub cache restored.
+description: The Flutter version from pubspec.yaml on PATH, with the pub cache restored.
 
 runs:
   using: composite
   steps:
     # Not subosito/flutter-action: it calls `actions/cache@v5` internally, by
     # tag, and a repository that requires every action pinned to a full commit
-    # SHA fails the job before it runs a step. A shallow clone of the stable
-    # branch is the SDK that action installs.
-    - name: Install Flutter (stable)
+    # SHA fails the job before it runs a step. Clone the lower-bound version declared
+    # in pubspec.yaml instead.
+    - name: Install Flutter from pubspec.yaml
       shell: bash
       run: |
-        git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+        version="$(ruby -ryaml -e '
+          version = YAML.load_file("pubspec.yaml").dig("environment", "flutter")
+          match = /\A(?:>=)?([0-9]+\.[0-9]+\.[0-9]+)\z/.match(version) if version.is_a?(String)
+          unless match
+            abort "::error::pubspec.yaml environment.flutter must be >=X.Y.Z or bare X.Y.Z"
+          end
+          puts match[1]
+        ')"
+        git clone --depth 1 --branch "$version" https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
         echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
     - name: Restore the pub cache
       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
