@@ -113,6 +113,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.4.1"
+  devdogsuga_sdk:
+    dependency: "direct main"
+    description:
+      name: devdogsuga_sdk
+      sha256: "09fc2cab9e2152b1799d19b5ebc2c21e63c8f54fdc907e4a66137e5e3c974f88"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.0-next.2"
   dotenv:
     dependency: transitive
     description:
@@ -844,4 +852,4 @@ packages:
     version: "2.1.1"
 sdks:
   dart: ">=3.13.0 <4.0.0"
-  flutter: "3.50.0"
+  flutter: ">=3.50.0"
