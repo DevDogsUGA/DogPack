@@ -4,7 +4,7 @@ import 'package:dogpack/auth/auth_gateway.dart';
 
 /// A gateway that signs in and out without a backend.
 class FakeGateway implements AuthGateway {
-  FakeGateway({String? userId, this.onboarded = false}) : _userId = userId;
+  FakeGateway({this._userId, this.onboarded = false});
 
   final _changes = StreamController<String?>.broadcast();
   String? _userId;
