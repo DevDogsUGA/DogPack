@@ -7,11 +7,14 @@ anything that talks to the database.
 
 ## Prerequisites
 
-- The [Flutter SDK](https://docs.flutter.dev/get-started/install) on your `PATH`
-  (`flutter --version`), run once with `flutter doctor` (a fresh Flutter SDK downloads
-  its engine artifacts on first use, and `devtools setup` fails with
-  `sky_engine ... doesn't exist` until it has), and an Android emulator or a phone. iPhone users need a
-  Mac to run the app from source.
+- Install the [Flutter SDK](https://docs.flutter.dev/get-started/install) version
+  required by `environment.flutter` in [pubspec.yaml](../../pubspec.yaml),
+  currently **3.50.0**, and put it on your `PATH`. Check `flutter --version`,
+  then run `flutter doctor` once to download the engine artifacts. Without
+  those artifacts, `devtools setup` fails with `sky_engine ... doesn't exist`.
+  `pnpm devtools doctor` warns when your local Flutter version differs from
+  the version in `pubspec.yaml`.
+- An Android emulator or a phone. iPhone users need a Mac to run the app from source.
 - [Node.js](https://nodejs.org) 22.12 or newer. The repository pins its pnpm, so
   `corepack enable` (once) gives you the right one; `pnpm --version` should work.
 - Git, and a fork of this repository if you are not on the DevDogs team.
